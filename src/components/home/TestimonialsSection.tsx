@@ -60,7 +60,9 @@ export const TestimonialsSection: React.FC = () => {
                 <div>
                   <h4 className="text-base font-bold text-[#123B3A] flex items-center gap-1.5">
                     {current.name}
-                    <CheckCircle2 className="w-4 h-4 text-[#12A77A]" title="Verified SSCI Student" />
+                    <span title="Verified SSCI Student">
+                      <CheckCircle2 className="w-4 h-4 text-[#12A77A]" />
+                    </span>
                   </h4>
                   <p className="text-xs font-semibold text-[#087F78]">
                     {current.course} • <span className="text-gray-500 font-normal">{current.role}</span>

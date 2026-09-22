@@ -1,5 +1,4 @@
 import React from 'react';
-import { GraduationCap, Award, BookOpen, CheckCircle2 } from 'lucide-react';
 import { FACULTY_TRAINERS } from '../data/trainers';
 import type { Trainer } from '../data/trainers';
 import { Breadcrumb } from '../components/common/Breadcrumb';

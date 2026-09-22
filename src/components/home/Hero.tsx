@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, Award, Monitor, Users, ArrowRight, Code2, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Award, Monitor, ArrowRight, Code2, Sparkles, CheckCircle2 } from 'lucide-react';
 import { SITE_CONFIG } from '../../config/site';
 import { FloatingTechnologies } from './FloatingTechnologies';
 

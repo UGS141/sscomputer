@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, Filter, BookOpen, Clock, ArrowRight, Sparkles, X } from 'lucide-react';
+import { Search, Filter, BookOpen, Clock, ArrowRight, X } from 'lucide-react';
 import { COURSES_DATA } from '../data/courses';
 import type { Course } from '../data/courses';
 import { COURSE_CATEGORIES } from '../data/categories';

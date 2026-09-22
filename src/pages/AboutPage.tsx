@@ -1,6 +1,6 @@
 import React from 'react';
 import { Breadcrumb } from '../components/common/Breadcrumb';
-import { Target, Eye, MonitorCheck, Award, Users, BookOpenCheck, ShieldCheck, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Target, Eye, MonitorCheck, Award, CheckCircle2 } from 'lucide-react';
 import { SITE_CONFIG } from '../config/site';
 import { FACULTY_TRAINERS } from '../data/trainers';
 

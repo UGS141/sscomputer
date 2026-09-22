@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useParams, Link, Navigate } from 'react-router-dom';
-import { Clock, Award, CheckCircle2, ChevronDown, Monitor, Sparkles, FolderKanban, ShieldCheck, ArrowRight } from 'lucide-react';
+import { useParams, Navigate } from 'react-router-dom';
+import { Clock, Award, CheckCircle2, ChevronDown, Monitor, Sparkles, FolderKanban, ShieldCheck } from 'lucide-react';
 import { getCourseBySlug } from '../data/courses';
 import { Breadcrumb } from '../components/common/Breadcrumb';
 

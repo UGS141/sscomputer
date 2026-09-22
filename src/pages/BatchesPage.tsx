@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Monitor, Users, Filter, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Calendar, Clock, Monitor, Users, Filter } from 'lucide-react';
 import { UPCOMING_BATCHES } from '../data/batches';
 import type { Batch } from '../data/batches';
 import { Breadcrumb } from '../components/common/Breadcrumb';

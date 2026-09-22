@@ -1,5 +1,5 @@
 import React from 'react';
-import { Code2, Database, BarChart3, FileSpreadsheet, Server, Cpu, Sparkles, Layers, Terminal } from 'lucide-react';
+import { Code2, Database, BarChart3, FileSpreadsheet, Cpu, Sparkles, Layers, Terminal } from 'lucide-react';
 
 export interface FloatingSkill {
   id: string;

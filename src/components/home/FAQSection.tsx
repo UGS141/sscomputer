@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, HelpCircle, Sparkles } from 'lucide-react';
+import { HelpCircle, ChevronDown } from 'lucide-react';
 import { GLOBAL_FAQS } from '../../data/faqs';
 import type { FAQItem } from '../../data/faqs';
 

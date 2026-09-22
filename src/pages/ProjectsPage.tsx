@@ -1,5 +1,4 @@
 import React from 'react';
-import { FolderKanban, Code2, ArrowRight } from 'lucide-react';
 import { STUDENT_PROJECTS } from '../data/projects';
 import type { StudentProject } from '../data/projects';
 import { Breadcrumb } from '../components/common/Breadcrumb';

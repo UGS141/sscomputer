@@ -1,5 +1,5 @@
 import React from 'react';
-import { Compass, Sparkles } from 'lucide-react';
+import { Compass } from 'lucide-react';
 
 export const JOURNEY_STEPS = [
   { step: '01', title: 'Choose Your Course', desc: 'Browse our catalog and select a course aligned with your learning goals.' },

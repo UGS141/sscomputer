@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { ShieldCheck, CheckCircle2, AlertCircle, Search, Download, QrCode, Award, Loader2, Sparkles } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, AlertCircle, Search, Download, QrCode, Loader2 } from 'lucide-react';
 import { apiService } from '../services/api';
 import type { VerificationResult } from '../services/api';
-import { SITE_CONFIG } from '../config/site';
 import { Breadcrumb } from '../components/common/Breadcrumb';
 
 export const CertificateVerificationPage: React.FC = () => {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
-import { Clock, Compass, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Clock, ArrowRight } from 'lucide-react';
 import { getLearningPathBySlug } from '../data/learningPaths';
 import { Breadcrumb } from '../components/common/Breadcrumb';
 

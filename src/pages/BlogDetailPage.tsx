@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
-import { Clock, Calendar, User, ArrowLeft, BookOpen, Share2 } from 'lucide-react';
+import { Clock, Calendar, User, ArrowLeft } from 'lucide-react';
 import { getBlogPostBySlug } from '../data/blog';
 import { Breadcrumb } from '../components/common/Breadcrumb';
 

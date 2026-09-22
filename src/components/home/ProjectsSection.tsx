@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FolderKanban, ArrowRight, Code2, Layers } from 'lucide-react';
+import { FolderKanban, ArrowRight } from 'lucide-react';
 import { STUDENT_PROJECTS } from '../../data/projects';
 import type { StudentProject } from '../../data/projects';
 
