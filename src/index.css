@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  
+  --color-ssci-teal: #087F78;
+  --color-ssci-teal-dark: #055C57;
+  --color-ssci-teal-light: #E6F5F4;
+  --color-ssci-emerald: #12A77A;
+  --color-ssci-emerald-light: #E7F8F3;
+  --color-ssci-orange: #F97316;
+  --color-ssci-orange-dark: #C2410C;
+  --color-ssci-orange-light: #FFF7ED;
+  --color-ssci-gold: #F5B72C;
+  --color-ssci-gold-light: #FEF9C3;
+  --color-ssci-dark: #123B3A;
+  --color-ssci-muted: #4B6B69;
+  --color-ssci-soft: #F7FAF9;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: #123B3A;
+    background-color: #F7FAF9;
+    scroll-behavior: smooth;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+/* Glassmorphism & custom utility classes */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.brand-gradient-text {
+  background: linear-gradient(135deg, #087F78 0%, #12A77A 50%, #F97316 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-gradient-bg {
+  background: linear-gradient(135deg, #087F78 0%, #12A77A 100%);
+}
+
+.accent-gradient-bg {
+  background: linear-gradient(135deg, #F97316 0%, #F5B72C 100%);
+}
+
+.card-hover-effect {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover-effect:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(8, 127, 120, 0.1), 0 8px 10px -6px rgba(8, 127, 120, 0.05);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F4;
+}
+::-webkit-scrollbar-thumb {
+  background: #087F78;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #055C57;
+}
+
+/* Animations */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 4s ease-in-out infinite;
+}
+
+/* Floating Technology Cards Animation */
+@keyframes float-gentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-float-card {
+  animation: float-gentle var(--float-duration, 5s) ease-in-out infinite var(--float-delay, 0s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-card {
+    animation: none !important;
+  }
+}
