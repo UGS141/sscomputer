@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { Clock, Award, CheckCircle2, ChevronDown, Monitor, Sparkles, FolderKanban, ShieldCheck } from 'lucide-react';
 import { getCourseBySlug } from '../data/courses';
 import { Breadcrumb } from '../components/common/Breadcrumb';
+import { SEOHead } from '../seo/SEOHead';
+import { generateCourseSchema, generateBreadcrumbSchema, generateFAQSchema } from '../seo/schemas';
+import { trackSEOEvent } from '../seo/analytics';
 
 interface CourseDetailPageProps {
   onOpenEnquiry: (courseTitle?: string) => void;
@@ -14,6 +17,12 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ onOpenEnquir
 
   const [openModuleIdx, setOpenModuleIdx] = useState<number | null>(0);
 
+  useEffect(() => {
+    if (course) {
+      trackSEOEvent('course_view', { course_slug: course.slug, course_title: course.title });
+    }
+  }, [course]);
+
   if (!course) {
     return <Navigate to="/courses" replace />;
   }
@@ -22,8 +31,29 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ onOpenEnquir
     setOpenModuleIdx(openModuleIdx === idx ? null : idx);
   };
 
+  const schemas = [
+    generateCourseSchema(course),
+    generateBreadcrumbSchema([
+      { name: 'Home', url: '/' },
+      { name: 'Courses', url: '/courses' },
+      { name: course.title, url: `/courses/${course.slug}` },
+    ]),
+    ...(course.faqs ? [generateFAQSchema(course.faqs)] : []),
+  ];
+
   return (
     <div className="w-full bg-[#F7FAF9] min-h-screen pb-16">
+      <SEOHead
+        title={`${course.title} Course in Nellore`}
+        description={`${course.shortDescription} Practical training at Sri Shanmukha Computer Institute, Nellore.`}
+        keywords={[
+          `${course.title} course in Nellore`,
+          `${course.title} training Nellore`,
+          ...course.skillsLearned,
+        ]}
+        canonicalPath={`/courses/${course.slug}`}
+        schemas={schemas}
+      />
       
       {/* Top Banner Header */}
       <div className="bg-gradient-to-b from-[#123B3A] to-[#087F78] text-white py-12 px-4 sm:px-6 lg:px-8 border-b border-teal-700">

@@ -1,14 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Award, Monitor, ArrowRight, Code2, Sparkles, CheckCircle2 } from 'lucide-react';
 import { SITE_CONFIG } from '../../config/site';
 import { FloatingTechnologies } from './FloatingTechnologies';
+import { cmsStore } from '../../admin/cmsStore';
 
 interface HeroProps {
   onOpenEnquiry: (courseTitle?: string) => void;
 }
 
 export const Hero: React.FC<HeroProps> = ({ onOpenEnquiry }) => {
+  const [heroContent, setHeroContent] = useState(cmsStore.getHeroContent());
+
+  useEffect(() => {
+    const unsubscribe = cmsStore.subscribe(() => {
+      setHeroContent({ ...cmsStore.getHeroContent() });
+    });
+    return unsubscribe;
+  }, []);
+
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-[#F7FAF9] via-teal-50/30 to-[#F7FAF9] pt-8 pb-16 lg:pt-16 lg:pb-24 border-b border-teal-100/50">
       {/* Background Decorative Accents */}
@@ -23,22 +33,22 @@ export const Hero: React.FC<HeroProps> = ({ onOpenEnquiry }) => {
             {/* Institute Tagline Pill */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-teal-100/80 border border-teal-300/60 text-[#087F78] text-xs font-bold tracking-wide uppercase shadow-xs">
               <Sparkles className="w-3.5 h-3.5 text-[#F97316]" />
-              <span>Sri Shanmukha Computer Institute</span>
+              <span>{heroContent.badge || SITE_CONFIG.name}</span>
               <span className="hidden sm:inline text-teal-400">•</span>
               <span className="hidden sm:inline text-[#F5B72C]">{SITE_CONFIG.tagline}</span>
             </div>
 
             {/* Main Headline */}
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#123B3A] tracking-tight leading-[1.15]">
-              Learn Today.{' '}
+              {heroContent.title}{' '}
               <span className="brand-gradient-text block sm:inline">
-                Build Your Future Tomorrow.
+                {heroContent.highlightText}
               </span>
             </h1>
 
             {/* Supporting Copy */}
             <p className="text-base sm:text-lg text-[#4B6B69] max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
-              Practical computer education, programming, digital skills and career-focused training designed to help students learn with confidence through 100% hands-on lab practice.
+              {heroContent.description}
             </p>
 
             {/* CTA Buttons */}

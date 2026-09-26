@@ -1,19 +1,44 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { Clock, Calendar, User, ArrowLeft } from 'lucide-react';
 import { getBlogPostBySlug } from '../data/blog';
 import { Breadcrumb } from '../components/common/Breadcrumb';
+import { SEOHead } from '../seo/SEOHead';
+import { generateBlogArticleSchema, generateBreadcrumbSchema } from '../seo/schemas';
+import { trackSEOEvent } from '../seo/analytics';
 
 export const BlogDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const post = getBlogPostBySlug(slug || '');
 
+  useEffect(() => {
+    if (post) {
+      trackSEOEvent('blog_view', { blog_slug: post.slug, blog_title: post.title });
+    }
+  }, [post]);
+
   if (!post) {
     return <Navigate to="/blog" replace />;
   }
 
+  const schemas = [
+    generateBlogArticleSchema(post),
+    generateBreadcrumbSchema([
+      { name: 'Home', url: '/' },
+      { name: 'Blog', url: '/blog' },
+      { name: post.title, url: `/blog/${post.slug}` },
+    ]),
+  ];
+
   return (
     <div className="w-full bg-[#F7FAF9] min-h-screen pb-16">
+      <SEOHead
+        title={post.title}
+        description={post.excerpt}
+        ogType="article"
+        canonicalPath={`/blog/${post.slug}`}
+        schemas={schemas}
+      />
       <div className="bg-gradient-to-b from-[#123B3A] to-[#087F78] text-white py-12 px-4 sm:px-6 lg:px-8 border-b border-teal-700">
         <div className="max-w-4xl mx-auto space-y-4">
           <div className="text-teal-200">

@@ -4,6 +4,9 @@ import { SITE_CONFIG, generateWhatsAppUrl } from '../config/site';
 import { COURSES_DATA } from '../data/courses';
 import { apiService } from '../services/api';
 import { Breadcrumb } from '../components/common/Breadcrumb';
+import { SEOHead } from '../seo/SEOHead';
+import { generateLocalBusinessSchema, generateBreadcrumbSchema } from '../seo/schemas';
+import { trackSEOEvent } from '../seo/analytics';
 
 export const ContactPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -25,6 +28,7 @@ export const ContactPage: React.FC = () => {
     setLoading(true);
     try {
       await apiService.submitEnquiry(formData);
+      trackSEOEvent('contact_form_submit', { course: formData.courseInterested });
       setSubmitted(true);
     } catch (err) {
       console.error(err);
@@ -33,8 +37,22 @@ export const ContactPage: React.FC = () => {
     }
   };
 
+  const schemas = [
+    generateLocalBusinessSchema(),
+    generateBreadcrumbSchema([
+      { name: 'Home', url: '/' },
+      { name: 'Contact Us', url: '/contact' },
+    ]),
+  ];
+
   return (
     <div className="w-full bg-[#F7FAF9] min-h-screen pb-16">
+      <SEOHead
+        title="Contact Sri Shanmukha Computer Institute | Dhanalakshmipuram, Nellore"
+        description="Get in touch with SSCI Nellore. Address: Dhanalakshmipuram, Opposite More Super Market, Nellore. Phone: +91 7675927519. Enquire for computer & programming courses."
+        canonicalPath="/contact"
+        schemas={schemas}
+      />
       
       {/* Banner */}
       <div className="bg-gradient-to-b from-[#123B3A] to-[#087F78] text-white py-12 px-4 sm:px-6 lg:px-8 border-b border-teal-700">

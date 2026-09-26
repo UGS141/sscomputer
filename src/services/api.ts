@@ -1,3 +1,5 @@
+import { cmsStore } from '../admin/cmsStore';
+
 export interface EnquiryPayload {
   name: string;
   phone: string;
@@ -19,90 +21,42 @@ export interface VerificationResult {
   errorMessage?: string;
 }
 
-// Sample mock certificates database
-const MOCK_CERTIFICATES: Record<string, VerificationResult> = {
-  'SSCI-2026-9482': {
-    valid: true,
-    certificateNumber: 'SSCI-2026-9482',
-    studentName: 'K. Sai Teja',
-    courseName: 'Python Programming',
-    issueDate: 'August 28, 2026',
-    completionStatus: 'Successfully Completed with Distinction',
-    grade: 'Grade A+',
-    verificationCode: 'VERIFIED-OFFICIAL-SSCI-2026',
-  },
-  'SSCI-2026-1024': {
-    valid: true,
-    certificateNumber: 'SSCI-2026-1024',
-    studentName: 'V. Ramya Sree',
-    courseName: 'Tally Prime & GST Accounting',
-    issueDate: 'September 10, 2026',
-    completionStatus: 'Successfully Completed',
-    grade: 'Grade A',
-    verificationCode: 'VERIFIED-OFFICIAL-SSCI-2026',
-  },
-  'SSCI-2026-5541': {
-    valid: true,
-    certificateNumber: 'SSCI-2026-5541',
-    studentName: 'M. Tarun Kumar',
-    courseName: 'Full Stack Web Development',
-    issueDate: 'July 14, 2026',
-    completionStatus: 'Successfully Completed with Distinction',
-    grade: 'Grade A+',
-    verificationCode: 'VERIFIED-OFFICIAL-SSCI-2026',
-  },
-  'SSCI-2026-8812': {
-    valid: true,
-    certificateNumber: 'SSCI-2026-8812',
-    studentName: 'P. Bhavana',
-    courseName: 'MS Office & Computer Fundamentals',
-    issueDate: 'September 01, 2026',
-    completionStatus: 'Successfully Completed',
-    grade: 'Grade A',
-    verificationCode: 'VERIFIED-OFFICIAL-SSCI-2026',
-  },
-};
-
 export const apiService = {
-  // Mock Enquiry Submission
+  // Submit Enquiry (Persists directly to CMS CRM Store)
   submitEnquiry: async (payload: EnquiryPayload): Promise<{ success: boolean; message: string }> => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        console.log('Enquiry received:', payload);
+        cmsStore.addLead({
+          name: payload.name,
+          phone: payload.phone,
+          email: payload.email,
+          courseInterested: payload.courseInterested,
+          preferredBatch: payload.preferredBatch,
+          message: payload.message,
+          source: 'Website',
+        });
         resolve({
           success: true,
-          message: 'Thank you! Our admission counselor will contact you shortly.',
+          message: 'Thank you! Our admission counselor at Sri Shanmukha Computer Institute will contact you shortly.',
         });
-      }, 800);
+      }, 500);
     });
   },
 
-  // Mock Certificate Verification
+  // Verify Certificate (Checks live CMS Certificates Registry)
   verifyCertificate: async (certNumber: string): Promise<VerificationResult> => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const cleaned = certNumber.trim().toUpperCase();
-        if (MOCK_CERTIFICATES[cleaned]) {
-          resolve(MOCK_CERTIFICATES[cleaned]);
-        } else if (cleaned.startsWith('SSCI-')) {
-          // Dynamic fallback for demo testing
-          resolve({
-            valid: true,
-            certificateNumber: cleaned,
-            studentName: 'SSCI Certified Student',
-            courseName: 'Computer & Practical Training Course',
-            issueDate: 'September 2026',
-            completionStatus: 'Verified & Authenticated in SSCI Student Registry',
-            grade: 'Grade A',
-            verificationCode: `VERIFIED-OFFICIAL-${cleaned}`,
-          });
+        const result = cmsStore.verifyCertificate(certNumber);
+        if (result) {
+          resolve(result);
         } else {
           resolve({
             valid: false,
-            errorMessage: `No record found for Certificate No: "${certNumber}". Please check the ID printed on your official SSCI certificate document or contact admissions.`,
+            errorMessage: `No record found for Certificate No: "${certNumber}". Please check the ID printed on your official SSCI certificate or contact administration.`,
           });
         }
-      }, 700);
+      }, 500);
     });
   },
 };

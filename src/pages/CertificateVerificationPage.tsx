@@ -3,6 +3,9 @@ import { ShieldCheck, CheckCircle2, AlertCircle, Search, Download, QrCode, Loade
 import { apiService } from '../services/api';
 import type { VerificationResult } from '../services/api';
 import { Breadcrumb } from '../components/common/Breadcrumb';
+import { SEOHead } from '../seo/SEOHead';
+import { generateBreadcrumbSchema } from '../seo/schemas';
+import { trackSEOEvent } from '../seo/analytics';
 
 export const CertificateVerificationPage: React.FC = () => {
   const [certInput, setCertInput] = useState('');
@@ -18,6 +21,7 @@ export const CertificateVerificationPage: React.FC = () => {
     try {
       const res = await apiService.verifyCertificate(certInput);
       setResult(res);
+      trackSEOEvent('certificate_verification', { cert_number: certInput, found: res.valid });
     } catch (err) {
       console.error(err);
     } finally {
@@ -30,8 +34,21 @@ export const CertificateVerificationPage: React.FC = () => {
     setResult(null);
   };
 
+  const schemas = [
+    generateBreadcrumbSchema([
+      { name: 'Home', url: '/' },
+      { name: 'Certificate Verification', url: '/verify-certificate' },
+    ]),
+  ];
+
   return (
     <div className="w-full bg-[#F7FAF9] min-h-screen pb-16">
+      <SEOHead
+        title="Online Certificate Verification | Sri Shanmukha Computer Institute"
+        description="Verify official course completion certificates issued by Sri Shanmukha Computer Institute (SSCI), Nellore."
+        canonicalPath="/verify-certificate"
+        schemas={schemas}
+      />
       
       {/* Banner */}
       <div className="bg-gradient-to-b from-[#123B3A] to-[#087F78] text-white py-12 px-4 sm:px-6 lg:px-8 border-b border-teal-700">

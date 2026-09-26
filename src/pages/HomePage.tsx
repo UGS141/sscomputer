@@ -1,4 +1,9 @@
 import React from 'react';
+import { SEOHead } from '../seo/SEOHead';
+import { generateLocalBusinessSchema, generateOrganizationSchema, generateWebSiteSchema, generateFAQSchema } from '../seo/schemas';
+import { SEO_CONFIG } from '../seo/config';
+import { GLOBAL_FAQS } from '../data/faqs';
+
 import { Hero } from '../components/home/Hero';
 import { StatsSection } from '../components/home/StatsSection';
 import { UpcomingBatchesSection } from '../components/home/UpcomingBatchesSection';
@@ -19,8 +24,22 @@ interface HomePageProps {
 }
 
 export const HomePage: React.FC<HomePageProps> = ({ onOpenEnquiry }) => {
+  const schemas = [
+    generateLocalBusinessSchema(),
+    generateOrganizationSchema(),
+    generateWebSiteSchema(),
+    generateFAQSchema(GLOBAL_FAQS),
+  ];
+
   return (
     <main className="w-full overflow-hidden">
+      <SEOHead
+        title="Sri Shanmukha Computer Institute | Computer Courses in Nellore"
+        description="Sri Shanmukha Computer Institute offers practical computer, programming, software and career-focused training in Nellore. Explore courses, batches and hands-on learning."
+        keywords={SEO_CONFIG.keywordClusters.primaryLocal}
+        canonicalPath="/"
+        schemas={schemas}
+      />
       <Hero onOpenEnquiry={onOpenEnquiry} />
       <StatsSection />
       <UpcomingBatchesSection onOpenEnquiry={onOpenEnquiry} />

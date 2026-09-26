@@ -3,6 +3,8 @@ import { useParams, Link, Navigate } from 'react-router-dom';
 import { Clock, ArrowRight } from 'lucide-react';
 import { getLearningPathBySlug } from '../data/learningPaths';
 import { Breadcrumb } from '../components/common/Breadcrumb';
+import { SEOHead } from '../seo/SEOHead';
+import { generateBreadcrumbSchema } from '../seo/schemas';
 
 interface LearningPathDetailPageProps {
   onOpenEnquiry: (courseTitle?: string) => void;
@@ -16,8 +18,22 @@ export const LearningPathDetailPage: React.FC<LearningPathDetailPageProps> = ({ 
     return <Navigate to="/learning-paths" replace />;
   }
 
+  const schemas = [
+    generateBreadcrumbSchema([
+      { name: 'Home', url: '/' },
+      { name: 'Learning Paths', url: '/learning-paths' },
+      { name: path.title, url: `/learning-paths/${path.slug}` },
+    ]),
+  ];
+
   return (
     <div className="w-full bg-[#F7FAF9] min-h-screen pb-16">
+      <SEOHead
+        title={`${path.title} Career Path in Nellore`}
+        description={`${path.description} Practical learning roadmap at Sri Shanmukha Computer Institute, Nellore.`}
+        canonicalPath={`/learning-paths/${path.slug}`}
+        schemas={schemas}
+      />
       
       {/* Header Banner */}
       <div className="bg-gradient-to-b from-[#123B3A] to-[#087F78] text-white py-12 px-4 sm:px-6 lg:px-8 border-b border-teal-700">

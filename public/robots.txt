@@ -1,0 +1,27 @@
+# Robots.txt for Sri Shanmukha Computer Institute (SSCI)
+# https://sscomputer.in
+
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /courses
+Allow: /courses/*
+Allow: /learning-paths
+Allow: /learning-paths/*
+Allow: /batches
+Allow: /projects
+Allow: /trainers
+Allow: /blog
+Allow: /blog/*
+Allow: /contact
+Allow: /verify-certificate
+
+# Disallow private/admin routes
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /student/
+Disallow: /trainer/
+Disallow: /api/private/
+
+# Sitemap Location
+Sitemap: https://sscomputer.in/sitemap.xml

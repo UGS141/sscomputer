@@ -3,14 +3,30 @@ import { Breadcrumb } from '../components/common/Breadcrumb';
 import { Target, Eye, MonitorCheck, Award, CheckCircle2 } from 'lucide-react';
 import { SITE_CONFIG } from '../config/site';
 import { FACULTY_TRAINERS } from '../data/trainers';
+import { SEOHead } from '../seo/SEOHead';
+import { generateOrganizationSchema, generateBreadcrumbSchema } from '../seo/schemas';
 
 interface AboutPageProps {
   onOpenEnquiry: (courseTitle?: string) => void;
 }
 
 export const AboutPage: React.FC<AboutPageProps> = ({ onOpenEnquiry }) => {
+  const schemas = [
+    generateOrganizationSchema(),
+    generateBreadcrumbSchema([
+      { name: 'Home', url: '/' },
+      { name: 'About SSCI', url: '/about' },
+    ]),
+  ];
+
   return (
     <div className="w-full bg-[#F7FAF9] min-h-screen">
+      <SEOHead
+        title="About Sri Shanmukha Computer Institute | Practical Training in Nellore"
+        description="Learn about Sri Shanmukha Computer Institute (SSCI), Nellore's trusted computer education institute providing hands-on lab training in programming, software, and IT skills."
+        canonicalPath="/about"
+        schemas={schemas}
+      />
       
       {/* Header Banner */}
       <div className="bg-gradient-to-b from-[#123B3A] to-[#087F78] text-white py-14 px-4 sm:px-6 lg:px-8 border-b border-teal-700">

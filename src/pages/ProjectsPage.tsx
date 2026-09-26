@@ -2,14 +2,29 @@ import React from 'react';
 import { STUDENT_PROJECTS } from '../data/projects';
 import type { StudentProject } from '../data/projects';
 import { Breadcrumb } from '../components/common/Breadcrumb';
+import { SEOHead } from '../seo/SEOHead';
+import { generateBreadcrumbSchema } from '../seo/schemas';
 
 interface ProjectsPageProps {
   onOpenEnquiry: (courseTitle?: string) => void;
 }
 
 export const ProjectsPage: React.FC<ProjectsPageProps> = ({ onOpenEnquiry }) => {
+  const schemas = [
+    generateBreadcrumbSchema([
+      { name: 'Home', url: '/' },
+      { name: 'Student Projects', url: '/projects' },
+    ]),
+  ];
+
   return (
     <div className="w-full bg-[#F7FAF9] min-h-screen pb-16">
+      <SEOHead
+        title="Student Lab Capstone Projects | Practical Training at SSCI Nellore"
+        description="Explore real-world software, web, and accounting capstone projects built by students during practical computer lab training at SSCI Nellore."
+        canonicalPath="/projects"
+        schemas={schemas}
+      />
       <div className="bg-gradient-to-b from-[#123B3A] to-[#087F78] text-white py-12 px-4 sm:px-6 lg:px-8 border-b border-teal-700">
         <div className="max-w-7xl mx-auto space-y-4">
           <div className="text-teal-200">

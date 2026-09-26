@@ -4,10 +4,25 @@ import { Clock, ArrowRight } from 'lucide-react';
 import { LEARNING_PATHS } from '../data/learningPaths';
 import type { LearningPath } from '../data/learningPaths';
 import { Breadcrumb } from '../components/common/Breadcrumb';
+import { SEOHead } from '../seo/SEOHead';
+import { generateBreadcrumbSchema } from '../seo/schemas';
 
 export const LearningPathsPage: React.FC = () => {
+  const schemas = [
+    generateBreadcrumbSchema([
+      { name: 'Home', url: '/' },
+      { name: 'Learning Paths', url: '/learning-paths' },
+    ]),
+  ];
+
   return (
     <div className="w-full bg-[#F7FAF9] min-h-screen pb-16">
+      <SEOHead
+        title="Structured Career Learning Paths | SSCI Computer Training Nellore"
+        description="Explore step-by-step learning paths in Programming, Web Development, Data Analytics, and Office Automation at Sri Shanmukha Computer Institute, Nellore."
+        canonicalPath="/learning-paths"
+        schemas={schemas}
+      />
       <div className="bg-gradient-to-b from-[#123B3A] to-[#087F78] text-white py-12 px-4 sm:px-6 lg:px-8 border-b border-teal-700">
         <div className="max-w-7xl mx-auto space-y-4">
           <div className="text-teal-200">

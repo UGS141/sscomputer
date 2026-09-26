@@ -5,6 +5,9 @@ import { COURSES_DATA } from '../data/courses';
 import type { Course } from '../data/courses';
 import { COURSE_CATEGORIES } from '../data/categories';
 import { Breadcrumb } from '../components/common/Breadcrumb';
+import { SEOHead } from '../seo/SEOHead';
+import { generateBreadcrumbSchema } from '../seo/schemas';
+import { SEO_CONFIG } from '../seo/config';
 
 interface CoursesPageProps {
   onOpenEnquiry: (courseTitle?: string) => void;
@@ -13,6 +16,13 @@ interface CoursesPageProps {
 export const CoursesPage: React.FC<CoursesPageProps> = ({ onOpenEnquiry }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCategory = searchParams.get('category') || 'all';
+
+  const schemas = [
+    generateBreadcrumbSchema([
+      { name: 'Home', url: '/' },
+      { name: 'Courses', url: '/courses' },
+    ]),
+  ];
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
@@ -58,6 +68,13 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ onOpenEnquiry }) => {
 
   return (
     <div className="w-full bg-[#F7FAF9] min-h-screen pb-16">
+      <SEOHead
+        title="Computer & Programming Courses in Nellore | SSCI Course Catalog"
+        description="Browse career-oriented computer courses at Sri Shanmukha Computer Institute in Nellore. Python, Tally Prime, MS Office, Java, C++, Full Stack Web Dev, and Data Analytics."
+        keywords={SEO_CONFIG.keywordClusters.primaryLocal}
+        canonicalPath="/courses"
+        schemas={schemas}
+      />
       
       {/* Banner */}
       <div className="bg-gradient-to-b from-[#123B3A] to-[#087F78] text-white py-12 px-4 sm:px-6 lg:px-8 border-b border-teal-700">

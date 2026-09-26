@@ -2,14 +2,29 @@ import React from 'react';
 import { FACULTY_TRAINERS } from '../data/trainers';
 import type { Trainer } from '../data/trainers';
 import { Breadcrumb } from '../components/common/Breadcrumb';
+import { SEOHead } from '../seo/SEOHead';
+import { generateBreadcrumbSchema } from '../seo/schemas';
 
 interface TrainersPageProps {
   onOpenEnquiry: (courseTitle?: string) => void;
 }
 
 export const TrainersPage: React.FC<TrainersPageProps> = ({ onOpenEnquiry }) => {
+  const schemas = [
+    generateBreadcrumbSchema([
+      { name: 'Home', url: '/' },
+      { name: 'Faculty & Trainers', url: '/trainers' },
+    ]),
+  ];
+
   return (
     <div className="w-full bg-[#F7FAF9] min-h-screen pb-16">
+      <SEOHead
+        title="Expert Faculty & Computer Lab Instructors | SSCI Nellore"
+        description="Meet the experienced educators and lab mentors at Sri Shanmukha Computer Institute guiding students in programming and digital skills."
+        canonicalPath="/trainers"
+        schemas={schemas}
+      />
       <div className="bg-gradient-to-b from-[#123B3A] to-[#087F78] text-white py-12 px-4 sm:px-6 lg:px-8 border-b border-teal-700">
         <div className="max-w-7xl mx-auto space-y-4">
           <div className="text-teal-200">

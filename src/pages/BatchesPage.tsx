@@ -3,6 +3,8 @@ import { Calendar, Clock, Monitor, Users, Filter } from 'lucide-react';
 import { UPCOMING_BATCHES } from '../data/batches';
 import type { Batch } from '../data/batches';
 import { Breadcrumb } from '../components/common/Breadcrumb';
+import { SEOHead } from '../seo/SEOHead';
+import { generateBreadcrumbSchema } from '../seo/schemas';
 
 interface BatchesPageProps {
   onOpenEnquiry: (courseTitle?: string) => void;
@@ -16,8 +18,21 @@ export const BatchesPage: React.FC<BatchesPageProps> = ({ onOpenEnquiry }) => {
     return batch.timing.toLowerCase() === selectedTiming.toLowerCase();
   });
 
+  const schemas = [
+    generateBreadcrumbSchema([
+      { name: 'Home', url: '/' },
+      { name: 'Upcoming Batches', url: '/batches' },
+    ]),
+  ];
+
   return (
     <div className="w-full bg-[#F7FAF9] min-h-screen pb-16">
+      <SEOHead
+        title="Upcoming Computer Course Batches in Nellore | SSCI Schedule"
+        description="Check upcoming morning, evening, and weekend batch timings for computer & programming courses at Sri Shanmukha Computer Institute, Nellore."
+        canonicalPath="/batches"
+        schemas={schemas}
+      />
       
       {/* Banner Header */}
       <div className="bg-gradient-to-b from-[#123B3A] to-[#087F78] text-white py-12 px-4 sm:px-6 lg:px-8 border-b border-teal-700">

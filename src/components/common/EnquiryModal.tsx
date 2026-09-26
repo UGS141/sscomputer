@@ -3,6 +3,7 @@ import { X, CheckCircle2, MessageSquare, Send, Loader2 } from 'lucide-react';
 import { COURSES_DATA } from '../../data/courses';
 import { apiService } from '../../services/api';
 import { generateWhatsAppUrl } from '../../config/site';
+import { trackSEOEvent } from '../../seo/analytics';
 
 interface EnquiryModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
     setLoading(true);
     try {
       await apiService.submitEnquiry(formData);
+      trackSEOEvent('course_enquiry', { course: formData.courseInterested });
       setSubmitted(true);
     } catch (err) {
       console.error(err);
