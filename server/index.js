@@ -354,6 +354,176 @@ app.get('/api/website/settings', async (req, res) => {
   }
 });
 
+app.put('/api/website/settings', authenticateToken, async (req, res) => {
+  try {
+    const settings = await SiteSettings.findOneAndUpdate({}, req.body, { upsert: true, new: true });
+    await logAudit(req.user.name, 'UPDATE_SETTINGS', 'Website', 'Updated site NAP and contact settings.');
+    res.json({ success: true, settings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error updating site settings.' });
+  }
+});
+
+// ----------------------------------------------------
+// BLOG APIs
+// ----------------------------------------------------
+app.get('/api/blog', async (req, res) => {
+  try {
+    const posts = await BlogPost.find().sort({ createdAt: -1 });
+    res.json({ success: true, posts });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error fetching blog posts.' });
+  }
+});
+
+app.post('/api/blog', authenticateToken, async (req, res) => {
+  try {
+    const postData = req.body;
+    const post = await BlogPost.findOneAndUpdate(
+      { slug: postData.slug },
+      postData,
+      { upsert: true, new: true, runValidators: true }
+    );
+    await logAudit(req.user.name, 'SAVE_BLOG', 'Blog', `Saved blog post "${post.title}".`);
+    res.json({ success: true, post });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+app.delete('/api/blog/:slug', authenticateToken, async (req, res) => {
+  try {
+    await BlogPost.findOneAndDelete({ slug: req.params.slug });
+    await logAudit(req.user.name, 'DELETE_BLOG', 'Blog', `Deleted blog post "${req.params.slug}".`);
+    res.json({ success: true, message: 'Blog post deleted.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error deleting blog post.' });
+  }
+});
+
+// ----------------------------------------------------
+// TRAINERS APIs
+// ----------------------------------------------------
+app.get('/api/trainers', async (req, res) => {
+  try {
+    const trainers = await Trainer.find().sort({ createdAt: -1 });
+    res.json({ success: true, trainers });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error fetching trainers.' });
+  }
+});
+
+app.post('/api/trainers', authenticateToken, async (req, res) => {
+  try {
+    const trainerData = req.body;
+    const trainer = await Trainer.findOneAndUpdate(
+      { id: trainerData.id },
+      trainerData,
+      { upsert: true, new: true, runValidators: true }
+    );
+    await logAudit(req.user.name, 'SAVE_TRAINER', 'Trainers', `Saved trainer "${trainer.name}".`);
+    res.json({ success: true, trainer });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+app.delete('/api/trainers/:id', authenticateToken, async (req, res) => {
+  try {
+    await Trainer.findOneAndDelete({ id: req.params.id });
+    await logAudit(req.user.name, 'DELETE_TRAINER', 'Trainers', `Deleted trainer "${req.params.id}".`);
+    res.json({ success: true, message: 'Trainer deleted.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error deleting trainer.' });
+  }
+});
+
+// ----------------------------------------------------
+// STUDENTS APIs
+// ----------------------------------------------------
+app.get('/api/students', authenticateToken, async (req, res) => {
+  try {
+    const students = await Student.find().sort({ createdAt: -1 });
+    res.json({ success: true, students });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error fetching students.' });
+  }
+});
+
+app.post('/api/students', authenticateToken, async (req, res) => {
+  try {
+    const studentData = req.body;
+    const student = await Student.findOneAndUpdate(
+      { studentId: studentData.studentId },
+      studentData,
+      { upsert: true, new: true, runValidators: true }
+    );
+    await logAudit(req.user.name, 'SAVE_STUDENT', 'Students', `Saved student "${student.name}".`);
+    res.json({ success: true, student });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// ----------------------------------------------------
+// FLOATING SKILLS APIs
+// ----------------------------------------------------
+app.get('/api/floating-skills', async (req, res) => {
+  try {
+    const skills = await FloatingSkill.find().sort({ createdAt: -1 });
+    res.json({ success: true, skills });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error fetching floating skills.' });
+  }
+});
+
+app.post('/api/floating-skills', authenticateToken, async (req, res) => {
+  try {
+    const skillData = req.body;
+    const skill = await FloatingSkill.findOneAndUpdate(
+      { id: skillData.id },
+      skillData,
+      { upsert: true, new: true, runValidators: true }
+    );
+    await logAudit(req.user.name, 'SAVE_FLOATING_SKILL', 'Website', `Saved floating skill "${skill.name}".`);
+    res.json({ success: true, skill });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+app.delete('/api/floating-skills/:id', authenticateToken, async (req, res) => {
+  try {
+    await FloatingSkill.findOneAndDelete({ id: req.params.id });
+    await logAudit(req.user.name, 'DELETE_FLOATING_SKILL', 'Website', `Deleted floating skill "${req.params.id}".`);
+    res.json({ success: true, message: 'Floating skill deleted.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error deleting floating skill.' });
+  }
+});
+
+// ----------------------------------------------------
+// ANNOUNCEMENTS APIs
+// ----------------------------------------------------
+app.get('/api/announcement', async (req, res) => {
+  try {
+    const announcement = await Announcement.findOne().sort({ createdAt: -1 });
+    res.json({ success: true, announcement });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error fetching announcement.' });
+  }
+});
+
+app.put('/api/announcement', authenticateToken, async (req, res) => {
+  try {
+    const announcement = await Announcement.findOneAndUpdate({}, req.body, { upsert: true, new: true });
+    await logAudit(req.user.name, 'UPDATE_ANNOUNCEMENT', 'Website', 'Updated announcement banner.');
+    res.json({ success: true, announcement });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error updating announcement.' });
+  }
+});
+
 // ----------------------------------------------------
 // AUDIT LOGS APIs
 // ----------------------------------------------------

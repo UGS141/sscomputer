@@ -130,3 +130,33 @@
   display: none;
 }
 
+/* Active Technology Center Highlight Styling */
+.tech-card-active {
+  transform: scale(1.12) !important;
+  background: linear-gradient(135deg, #087F78 0%, #12A77A 50%, #087F78 100%) !important;
+  color: #ffffff !important;
+  border-color: #99F6E4 !important;
+  box-shadow: 0 0 35px rgba(8, 127, 120, 0.45), 0 0 15px rgba(18, 167, 122, 0.35) !important;
+  z-index: 10 !important;
+  opacity: 1 !important;
+}
+
+.tech-card-active .tech-card-title {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.tech-card-active .tech-card-subtext {
+  color: #CCFBF1 !important;
+}
+
+.tech-card-active .tech-card-icon {
+  background-color: rgba(255, 255, 255, 0.22) !important;
+  color: #FDE047 !important;
+}
+
+.tech-card-active .tech-card-beacon {
+  display: inline-block !important;
+}
+
+
