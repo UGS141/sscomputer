@@ -1,20 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Clock, Monitor, Users, ArrowRight, Sparkles } from 'lucide-react';
-import { UPCOMING_BATCHES } from '../../data/batches';
+import { cmsStore } from '../../admin/cmsStore';
 import type { Batch } from '../../data/batches';
+import { HorizontalAutoCarousel } from '../common/HorizontalAutoCarousel';
 
 interface UpcomingBatchesSectionProps {
   onOpenEnquiry: (courseTitle?: string) => void;
 }
 
 export const UpcomingBatchesSection: React.FC<UpcomingBatchesSectionProps> = ({ onOpenEnquiry }) => {
+  const [batches, setBatches] = useState<Batch[]>(cmsStore.getBatches());
+
+  useEffect(() => {
+    const unsubscribe = cmsStore.subscribe(() => {
+      setBatches([...cmsStore.getBatches()]);
+    });
+    return unsubscribe;
+  }, []);
+
   return (
-    <section className="py-16 bg-[#F7FAF9] border-b border-teal-100/60">
+    <section className="py-16 bg-[#F7FAF9] border-b border-teal-100/60 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
+        <div className="text-center max-w-3xl mx-auto mb-10 space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-100/80 border border-teal-200 text-[#087F78] text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5 text-[#F97316]" />
             <span>Classroom & Lab Schedules</span>
@@ -27,14 +37,18 @@ export const UpcomingBatchesSection: React.FC<UpcomingBatchesSectionProps> = ({ 
           </p>
         </div>
 
-        {/* Batches Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {UPCOMING_BATCHES.slice(0, 6).map((batch: Batch) => {
+        {/* Batches Horizontal Auto-Scrolling Carousel */}
+        <HorizontalAutoCarousel
+          items={batches}
+          getItemKey={(batch) => batch.id}
+          speedSeconds={28}
+          ariaLabel="Upcoming batches carousel"
+          itemClassName="w-[85vw] sm:w-[350px] md:w-[370px] lg:w-[390px] shrink-0"
+          renderItem={(batch: Batch) => {
             const seatsLeft = batch.totalSeats - batch.filledSeats;
             return (
               <div
-                key={batch.id}
-                className="bg-white rounded-2xl p-6 border border-teal-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group card-hover-effect relative overflow-hidden"
+                className="bg-white rounded-2xl p-6 border border-teal-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group card-hover-effect relative overflow-hidden h-full"
               >
                 {/* Top Status Badge */}
                 <div className="flex items-center justify-between gap-2 mb-4">
@@ -101,7 +115,7 @@ export const UpcomingBatchesSection: React.FC<UpcomingBatchesSectionProps> = ({ 
                 </div>
 
                 {/* Card Action */}
-                <div className="flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-3 pt-2 mt-auto">
                   <button
                     onClick={() => onOpenEnquiry(batch.courseName)}
                     className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white brand-gradient-bg shadow-sm hover:shadow-md transition-all text-center"
@@ -120,8 +134,8 @@ export const UpcomingBatchesSection: React.FC<UpcomingBatchesSectionProps> = ({ 
 
               </div>
             );
-          })}
-        </div>
+          }}
+        />
 
         {/* View All Batches Footer Trigger */}
         <div className="mt-10 text-center">
@@ -138,3 +152,4 @@ export const UpcomingBatchesSection: React.FC<UpcomingBatchesSectionProps> = ({ 
     </section>
   );
 };
+
