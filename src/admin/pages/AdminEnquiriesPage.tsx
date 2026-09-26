@@ -15,7 +15,7 @@ import {
   Send,
   Sparkles
 } from 'lucide-react';
-import { cmsStore, Lead } from '../cmsStore';
+import { cmsStore, type Lead } from '../cmsStore';
 
 export const AdminEnquiriesPage: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>(cmsStore.getLeads());

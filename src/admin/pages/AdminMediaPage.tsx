@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Image as ImageIcon, Upload, Copy, Trash2, Search, CheckCircle2 } from 'lucide-react';
-import { cmsStore, MediaItem } from '../cmsStore';
+import { cmsStore, type MediaItem } from '../cmsStore';
 
 export const AdminMediaPage: React.FC = () => {
   const [media, setMedia] = useState<MediaItem[]>(cmsStore.getMedia());

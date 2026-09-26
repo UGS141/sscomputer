@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Plus, Edit3, Trash2, Users, Clock, CheckCircle2, ChevronRight, Filter, Search } from 'lucide-react';
-import { cmsStore, Batch } from '../cmsStore';
+import { Calendar, Plus, Edit3, Trash2, Users, Clock } from 'lucide-react';
+import { cmsStore, type Batch } from '../cmsStore';
 
 export const AdminBatchesPage: React.FC = () => {
   const [batches, setBatches] = useState<Batch[]>(cmsStore.getBatches());
@@ -10,12 +10,15 @@ export const AdminBatchesPage: React.FC = () => {
   const [formData, setFormData] = useState<Partial<Batch>>({
     courseName: 'Python Programming',
     courseSlug: 'python-programming',
-    startDate: 'Next Monday',
-    timing: 'Morning (10:00 AM - 12:00 PM)',
-    days: 'Mon - Fri',
+    category: 'Programming',
+    level: 'Beginner to Advanced',
+    duration: '60 Days',
+    startDate: 'October 5, 2026',
+    timing: 'Morning',
+    timeRange: '08:00 AM – 10:00 AM',
     mode: 'Practical Lab',
-    status: 'Upcoming',
-    availableSeats: 12,
+    status: 'Starting Soon',
+    filledSeats: 8,
     totalSeats: 20,
     trainerName: 'Senior SSCI Faculty',
   });
@@ -32,12 +35,15 @@ export const AdminBatchesPage: React.FC = () => {
     setFormData({
       courseName: 'Python Programming',
       courseSlug: 'python-programming',
-      startDate: 'Next Monday',
-      timing: 'Morning (10:00 AM - 12:00 PM)',
-      days: 'Mon - Fri',
+      category: 'Programming',
+      level: 'Beginner to Advanced',
+      duration: '60 Days',
+      startDate: 'October 5, 2026',
+      timing: 'Morning',
+      timeRange: '08:00 AM – 10:00 AM',
       mode: 'Practical Lab',
-      status: 'Upcoming',
-      availableSeats: 12,
+      status: 'Starting Soon',
+      filledSeats: 8,
       totalSeats: 20,
       trainerName: 'Senior SSCI Faculty',
     });
@@ -94,9 +100,9 @@ export const AdminBatchesPage: React.FC = () => {
                   {batch.id}
                 </span>
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                  batch.status === 'Open' || batch.status === 'Upcoming'
+                  batch.status === 'Open' || batch.status === 'Starting Soon'
                     ? 'bg-emerald-100 text-[#12A77A]'
-                    : batch.status === 'Filling Fast'
+                    : batch.status === 'Filling Fast' || batch.status === 'Few Seats Left'
                     ? 'bg-orange-100 text-[#F97316]'
                     : 'bg-gray-100 text-gray-600'
                 }`}>
@@ -111,11 +117,11 @@ export const AdminBatchesPage: React.FC = () => {
               <div className="space-y-1.5 text-xs text-gray-600">
                 <p className="flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5 text-[#087F78]" />
-                  <span>Starts: <strong>{batch.startDate}</strong> ({batch.days})</span>
+                  <span>Starts: <strong>{batch.startDate}</strong></span>
                 </p>
                 <p className="flex items-center gap-2">
                   <Clock className="w-3.5 h-3.5 text-[#F97316]" />
-                  <span>Timing: {batch.timing}</span>
+                  <span>Timing: {batch.timing} ({batch.timeRange})</span>
                 </p>
                 <p className="flex items-center gap-2">
                   <Users className="w-3.5 h-3.5 text-[#12A77A]" />
@@ -126,13 +132,13 @@ export const AdminBatchesPage: React.FC = () => {
               {/* Seat Indicator */}
               <div className="pt-2">
                 <div className="flex items-center justify-between text-[11px] font-bold mb-1">
-                  <span className="text-gray-500">Seats Reserved</span>
-                  <span className="text-[#087F78]">{batch.totalSeats - batch.availableSeats} / {batch.totalSeats}</span>
+                  <span className="text-gray-500">Seats Enrolled</span>
+                  <span className="text-[#087F78]">{batch.filledSeats} / {batch.totalSeats}</span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
                   <div
                     className="h-full rounded-full brand-gradient-bg"
-                    style={{ width: `${((batch.totalSeats - batch.availableSeats) / batch.totalSeats) * 100}%` }}
+                    style={{ width: `${Math.min(100, Math.round((batch.filledSeats / batch.totalSeats) * 100))}%` }}
                   />
                 </div>
               </div>
@@ -185,30 +191,60 @@ export const AdminBatchesPage: React.FC = () => {
                   type="text"
                   value={formData.startDate || ''}
                   onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  placeholder="e.g. Oct 05, 2026"
+                  placeholder="e.g. October 5, 2026"
                   className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#123B3A] mb-1 uppercase tracking-wider">Timing</label>
-                <input
-                  type="text"
-                  value={formData.timing || ''}
-                  onChange={(e) => setFormData({ ...formData, timing: e.target.value })}
-                  placeholder="e.g. 10 AM - 12 PM"
+                <label className="block text-xs font-bold text-[#123B3A] mb-1 uppercase tracking-wider">Timing Slot</label>
+                <select
+                  value={formData.timing || 'Morning'}
+                  onChange={(e) => setFormData({ ...formData, timing: e.target.value as any })}
                   className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold"
-                />
+                >
+                  <option value="Morning">Morning</option>
+                  <option value="Afternoon">Afternoon</option>
+                  <option value="Evening">Evening</option>
+                  <option value="Weekend">Weekend</option>
+                </select>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-[#123B3A] mb-1 uppercase tracking-wider">Available Seats</label>
+                <label className="block text-xs font-bold text-[#123B3A] mb-1 uppercase tracking-wider">Time Range</label>
+                <input
+                  type="text"
+                  value={formData.timeRange || ''}
+                  onChange={(e) => setFormData({ ...formData, timeRange: e.target.value })}
+                  placeholder="e.g. 08:00 AM – 10:00 AM"
+                  className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#123B3A] mb-1 uppercase tracking-wider">Status</label>
+                <select
+                  value={formData.status || 'Starting Soon'}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                  className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold"
+                >
+                  <option value="Starting Soon">Starting Soon</option>
+                  <option value="Open">Open</option>
+                  <option value="Few Seats Left">Few Seats Left</option>
+                  <option value="Filling Fast">Filling Fast</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-[#123B3A] mb-1 uppercase tracking-wider">Filled Seats</label>
                 <input
                   type="number"
-                  value={formData.availableSeats || 0}
-                  onChange={(e) => setFormData({ ...formData, availableSeats: parseInt(e.target.value) || 0 })}
+                  value={formData.filledSeats || 0}
+                  onChange={(e) => setFormData({ ...formData, filledSeats: parseInt(e.target.value) || 0 })}
                   className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold"
                 />
               </div>

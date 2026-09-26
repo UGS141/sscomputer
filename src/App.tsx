@@ -25,6 +25,25 @@ import { BlogDetailPage } from './pages/BlogDetailPage';
 import { ContactPage } from './pages/ContactPage';
 import { CertificateVerificationPage } from './pages/CertificateVerificationPage';
 
+// Admin CMS & CRM Components
+import { AdminLayout } from './admin/AdminLayout';
+import { AdminLoginPage } from './admin/pages/AdminLoginPage';
+import { AdminDashboard } from './admin/pages/AdminDashboard';
+import { AdminCoursesPage } from './admin/pages/AdminCoursesPage';
+import { AdminCourseEditorPage } from './admin/pages/AdminCourseEditorPage';
+import { AdminBatchesPage } from './admin/pages/AdminBatchesPage';
+import { AdminEnquiriesPage } from './admin/pages/AdminEnquiriesPage';
+import { AdminStudentsPage } from './admin/pages/AdminStudentsPage';
+import { AdminTrainersPage } from './admin/pages/AdminTrainersPage';
+import { AdminContentPage } from './admin/pages/AdminContentPage';
+import { AdminCertificatesPage } from './admin/pages/AdminCertificatesPage';
+import { AdminWebsitePage } from './admin/pages/AdminWebsitePage';
+import { AdminSEOPage } from './admin/pages/AdminSEOPage';
+import { AdminAnalyticsPage } from './admin/pages/AdminAnalyticsPage';
+import { AdminSettingsPage } from './admin/pages/AdminSettingsPage';
+import { AdminMediaPage } from './admin/pages/AdminMediaPage';
+import { AdminAuditLogsPage } from './admin/pages/AdminAuditLogsPage';
+
 export const App: React.FC = () => {
   const [isEnquiryOpen, setIsEnquiryOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -39,62 +58,102 @@ export const App: React.FC = () => {
   return (
     <BrowserRouter>
       <ScrollToTop />
-      <div className="flex flex-col min-h-screen bg-[#F7FAF9] text-[#123B3A]">
-        {/* Sticky Navbar */}
-        <Navbar
-          onOpenEnquiry={handleOpenEnquiry}
-          onOpenLogin={() => setIsLoginOpen(true)}
-          onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+      <Routes>
+        {/* Admin Login Route */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+
+        {/* Admin Dashboard Protected Layout & Routes */}
+        <Route
+          path="/admin/*"
+          element={
+            <AdminLayout>
+              <Routes>
+                <Route path="/" element={<AdminDashboard />} />
+                <Route path="/courses" element={<AdminCoursesPage />} />
+                <Route path="/courses/new" element={<AdminCourseEditorPage />} />
+                <Route path="/courses/edit/:slug" element={<AdminCourseEditorPage />} />
+                <Route path="/batches" element={<AdminBatchesPage />} />
+                <Route path="/enquiries" element={<AdminEnquiriesPage />} />
+                <Route path="/students" element={<AdminStudentsPage />} />
+                <Route path="/trainers" element={<AdminTrainersPage />} />
+                <Route path="/blog" element={<AdminContentPage />} />
+                <Route path="/certificates" element={<AdminCertificatesPage />} />
+                <Route path="/website" element={<AdminWebsitePage />} />
+                <Route path="/seo" element={<AdminSEOPage />} />
+                <Route path="/analytics" element={<AdminAnalyticsPage />} />
+                <Route path="/settings" element={<AdminSettingsPage />} />
+                <Route path="/media" element={<AdminMediaPage />} />
+                <Route path="/audit-logs" element={<AdminAuditLogsPage />} />
+                <Route path="*" element={<Navigate to="/admin" replace />} />
+              </Routes>
+            </AdminLayout>
+          }
         />
 
-        {/* Mobile Slide-out Drawer */}
-        <MobileMenu
-          isOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-          onOpenEnquiry={handleOpenEnquiry}
-          onOpenLogin={() => setIsLoginOpen(true)}
+        {/* Public Website Routes */}
+        <Route
+          path="/*"
+          element={
+            <div className="flex flex-col min-h-screen bg-[#F7FAF9] text-[#123B3A]">
+              {/* Sticky Navbar */}
+              <Navbar
+                onOpenEnquiry={handleOpenEnquiry}
+                onOpenLogin={() => setIsLoginOpen(true)}
+                onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+              />
+
+              {/* Mobile Slide-out Drawer */}
+              <MobileMenu
+                isOpen={isMobileMenuOpen}
+                onClose={() => setIsMobileMenuOpen(false)}
+                onOpenEnquiry={handleOpenEnquiry}
+                onOpenLogin={() => setIsLoginOpen(true)}
+              />
+
+              {/* Main Route Content */}
+              <div className="flex-1">
+                <Routes>
+                  <Route path="/" element={<HomePage onOpenEnquiry={handleOpenEnquiry} />} />
+                  <Route path="/about" element={<AboutPage onOpenEnquiry={handleOpenEnquiry} />} />
+                  <Route path="/courses" element={<CoursesPage onOpenEnquiry={handleOpenEnquiry} />} />
+                  <Route path="/courses/:slug" element={<CourseDetailPage onOpenEnquiry={handleOpenEnquiry} />} />
+                  <Route path="/learning-paths" element={<LearningPathsPage />} />
+                  <Route path="/learning-paths/:slug" element={<LearningPathDetailPage onOpenEnquiry={handleOpenEnquiry} />} />
+                  <Route path="/batches" element={<BatchesPage onOpenEnquiry={handleOpenEnquiry} />} />
+                  <Route path="/projects" element={<ProjectsPage onOpenEnquiry={handleOpenEnquiry} />} />
+                  <Route path="/trainers" element={<TrainersPage onOpenEnquiry={handleOpenEnquiry} />} />
+                  <Route path="/blog" element={<BlogPage />} />
+                  <Route path="/blog/:slug" element={<BlogDetailPage />} />
+                  <Route path="/contact" element={<ContactPage />} />
+                  <Route path="/verify-certificate" element={<CertificateVerificationPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </div>
+
+              {/* Global Footer */}
+              <Footer />
+
+              {/* Floating WhatsApp Quick Action */}
+              <WhatsAppButton />
+
+              {/* Modals */}
+              <EnquiryModal
+                isOpen={isEnquiryOpen}
+                onClose={() => setIsEnquiryOpen(false)}
+                prefilledCourse={selectedCourseForEnquiry}
+              />
+
+              <StudentLoginModal
+                isOpen={isLoginOpen}
+                onClose={() => setIsLoginOpen(false)}
+              />
+            </div>
+          }
         />
-
-        {/* Main Route Content */}
-        <div className="flex-1">
-          <Routes>
-            <Route path="/" element={<HomePage onOpenEnquiry={handleOpenEnquiry} />} />
-            <Route path="/about" element={<AboutPage onOpenEnquiry={handleOpenEnquiry} />} />
-            <Route path="/courses" element={<CoursesPage onOpenEnquiry={handleOpenEnquiry} />} />
-            <Route path="/courses/:slug" element={<CourseDetailPage onOpenEnquiry={handleOpenEnquiry} />} />
-            <Route path="/learning-paths" element={<LearningPathsPage />} />
-            <Route path="/learning-paths/:slug" element={<LearningPathDetailPage onOpenEnquiry={handleOpenEnquiry} />} />
-            <Route path="/batches" element={<BatchesPage onOpenEnquiry={handleOpenEnquiry} />} />
-            <Route path="/projects" element={<ProjectsPage onOpenEnquiry={handleOpenEnquiry} />} />
-            <Route path="/trainers" element={<TrainersPage onOpenEnquiry={handleOpenEnquiry} />} />
-            <Route path="/blog" element={<BlogPage />} />
-            <Route path="/blog/:slug" element={<BlogDetailPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/verify-certificate" element={<CertificateVerificationPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </div>
-
-        {/* Global Footer */}
-        <Footer />
-
-        {/* Floating WhatsApp Quick Action */}
-        <WhatsAppButton />
-
-        {/* Modals */}
-        <EnquiryModal
-          isOpen={isEnquiryOpen}
-          onClose={() => setIsEnquiryOpen(false)}
-          prefilledCourse={selectedCourseForEnquiry}
-        />
-
-        <StudentLoginModal
-          isOpen={isLoginOpen}
-          onClose={() => setIsLoginOpen(false)}
-        />
-      </div>
+      </Routes>
     </BrowserRouter>
   );
 };
 
 export default App;
+

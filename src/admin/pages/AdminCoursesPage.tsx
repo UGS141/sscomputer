@@ -15,7 +15,7 @@ import {
   ChevronRight,
   Sparkles
 } from 'lucide-react';
-import { cmsStore, Course } from '../cmsStore';
+import { cmsStore, type Course } from '../cmsStore';
 
 export const AdminCoursesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -162,7 +162,6 @@ export const AdminCoursesPage: React.FC = () => {
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => navigate(`/courses/${course.slug}`)}
-                          target="_blank"
                           title="Preview Public Page"
                           className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
                         >

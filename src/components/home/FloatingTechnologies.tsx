@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Code2, Database, BarChart3, FileSpreadsheet, Cpu, Sparkles, Layers, Terminal } from 'lucide-react';
+import { cmsStore } from '../../admin/cmsStore';
 
 export interface FloatingSkill {
   id: string;
   name: string;
   category: string;
-  icon: React.FC<{ className?: string }>;
+  icon: React.FC<{ className?: string }> | any;
   accentColor: string;
   dotColor: string;
   badgeBg: string;
@@ -15,6 +16,17 @@ export interface FloatingSkill {
   delay: string;
   depthScale?: string;
 }
+
+const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
+  Code2,
+  Database,
+  BarChart3,
+  FileSpreadsheet,
+  Cpu,
+  Sparkles,
+  Layers,
+  Terminal,
+};
 
 export const FLOATING_SKILLS: FloatingSkill[] = [
   {
@@ -160,10 +172,25 @@ export const FLOATING_SKILLS: FloatingSkill[] = [
 ];
 
 export const FloatingTechnologies: React.FC = () => {
+  const [skills, setSkills] = useState<FloatingSkill[]>(() => {
+    const cmsSkills = cmsStore.getFloatingSkills();
+    return cmsSkills && cmsSkills.length > 0 ? (cmsSkills as any) : FLOATING_SKILLS;
+  });
+
+  useEffect(() => {
+    const unsubscribe = cmsStore.subscribe(() => {
+      const cmsSkills = cmsStore.getFloatingSkills();
+      if (cmsSkills && cmsSkills.length > 0) {
+        setSkills(cmsSkills as any);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   return (
     <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden sm:overflow-visible">
-      {FLOATING_SKILLS.map((skill) => {
-        const IconComp = skill.icon;
+      {skills.map((skill) => {
+        const IconComp = typeof skill.icon === 'string' ? (ICON_MAP[skill.icon] || Code2) : (skill.icon || Code2);
         return (
           <div
             key={skill.id}
@@ -195,3 +222,4 @@ export const FloatingTechnologies: React.FC = () => {
     </div>
   );
 };
+

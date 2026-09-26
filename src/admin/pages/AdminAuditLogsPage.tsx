@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Clock, Search, Filter } from 'lucide-react';
-import { cmsStore, AuditLog } from '../cmsStore';
+import { cmsStore, type AuditLog } from '../cmsStore';
 
 export const AdminAuditLogsPage: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>(cmsStore.getAuditLogs());

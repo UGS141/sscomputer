@@ -20,7 +20,7 @@ import {
   ChevronRight,
   Sparkles
 } from 'lucide-react';
-import { cmsStore, Lead } from '../cmsStore';
+import { cmsStore, type Lead } from '../cmsStore';
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();

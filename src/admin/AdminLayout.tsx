@@ -30,7 +30,7 @@ import {
   Building2,
   MessageSquare
 } from 'lucide-react';
-import { cmsStore, AdminUser, Lead } from './cmsStore';
+import { cmsStore, type AdminUser, type Lead } from './cmsStore';
 
 interface AdminLayoutProps {
   children: React.ReactNode;

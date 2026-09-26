@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Globe, Plus, Trash2, Edit3, Save, CheckCircle2, Sparkles, Layers, Cpu, Code2, Database } from 'lucide-react';
-import { cmsStore, FloatingSkill, HeroContent, Announcement } from '../cmsStore';
+import { cmsStore, type FloatingSkill, type HeroContent, type Announcement } from '../cmsStore';
 
 export const AdminWebsitePage: React.FC = () => {
   const [hero, setHero] = useState<HeroContent>(cmsStore.getHeroContent());

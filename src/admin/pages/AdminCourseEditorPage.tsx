@@ -13,7 +13,7 @@ import {
   Sparkles,
   BookOpen
 } from 'lucide-react';
-import { cmsStore, Course } from '../cmsStore';
+import { cmsStore, type Course } from '../cmsStore';
 
 export const AdminCourseEditorPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -73,7 +73,7 @@ export const AdminCourseEditorPage: React.FC = () => {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
-    setFormData((prev) => ({
+    setFormData((prev: Partial<Course>) => ({
       ...prev,
       title: newTitle,
       slug: isNew ? generatedSlug : prev.slug || generatedSlug,
@@ -82,7 +82,7 @@ export const AdminCourseEditorPage: React.FC = () => {
 
   // Module helpers
   const addModule = () => {
-    setFormData((prev) => ({
+    setFormData((prev: Partial<Course>) => ({
       ...prev,
       modules: [
         ...(prev.modules || []),
@@ -92,14 +92,14 @@ export const AdminCourseEditorPage: React.FC = () => {
   };
 
   const removeModule = (mIdx: number) => {
-    setFormData((prev) => ({
+    setFormData((prev: Partial<Course>) => ({
       ...prev,
       modules: prev.modules?.filter((_, idx) => idx !== mIdx)
     }));
   };
 
   const updateModuleTitle = (mIdx: number, newTitle: string) => {
-    setFormData((prev) => {
+    setFormData((prev: Partial<Course>) => {
       const updated = [...(prev.modules || [])];
       updated[mIdx].title = newTitle;
       return { ...prev, modules: updated };
@@ -107,7 +107,7 @@ export const AdminCourseEditorPage: React.FC = () => {
   };
 
   const addTopic = (mIdx: number) => {
-    setFormData((prev) => {
+    setFormData((prev: Partial<Course>) => {
       const updated = [...(prev.modules || [])];
       updated[mIdx].topics.push('New Lesson Topic');
       return { ...prev, modules: updated };
@@ -115,7 +115,7 @@ export const AdminCourseEditorPage: React.FC = () => {
   };
 
   const updateTopic = (mIdx: number, tIdx: number, val: string) => {
-    setFormData((prev) => {
+    setFormData((prev: Partial<Course>) => {
       const updated = [...(prev.modules || [])];
       updated[mIdx].topics[tIdx] = val;
       return { ...prev, modules: updated };
@@ -123,7 +123,7 @@ export const AdminCourseEditorPage: React.FC = () => {
   };
 
   const removeTopic = (mIdx: number, tIdx: number) => {
-    setFormData((prev) => {
+    setFormData((prev: Partial<Course>) => {
       const updated = [...(prev.modules || [])];
       updated[mIdx].topics = updated[mIdx].topics.filter((_, idx) => idx !== tIdx);
       return { ...prev, modules: updated };
@@ -323,7 +323,7 @@ export const AdminCourseEditorPage: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              {formData.modules?.map((mod, mIdx) => (
+              {formData.modules?.map((mod: { title: string; topics: string[] }, mIdx: number) => (
                 <div key={mIdx} className="p-4 rounded-xl border border-teal-100 bg-teal-50/20 space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <input
@@ -343,7 +343,7 @@ export const AdminCourseEditorPage: React.FC = () => {
                   </div>
 
                   <div className="pl-4 border-l-2 border-teal-200 space-y-2">
-                    {mod.topics.map((topic, tIdx) => (
+                    {mod.topics.map((topic: string, tIdx: number) => (
                       <div key={tIdx} className="flex items-center gap-2">
                         <input
                           type="text"

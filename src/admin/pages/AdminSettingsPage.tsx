@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Settings, Save, Building2, Phone, Mail, MapPin, Shield, CheckCircle2 } from 'lucide-react';
-import { cmsStore, SiteSettings } from '../cmsStore';
+import { cmsStore, type SiteSettings } from '../cmsStore';
 
 export const AdminSettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<SiteSettings>(cmsStore.getSettings());

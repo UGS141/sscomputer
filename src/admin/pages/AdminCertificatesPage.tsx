@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Award, Plus, Search, ShieldCheck, AlertCircle, CheckCircle2, Copy } from 'lucide-react';
-import { cmsStore, CertificateRecord } from '../cmsStore';
+import { cmsStore, type CertificateRecord } from '../cmsStore';
 
 export const AdminCertificatesPage: React.FC = () => {
   const [certificates, setCertificates] = useState<CertificateRecord[]>(cmsStore.getCertificates());

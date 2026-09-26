@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GraduationCap, Plus, Edit3, Trash2, CheckCircle2 } from 'lucide-react';
-import { cmsStore, Trainer } from '../cmsStore';
+import { cmsStore, type Trainer } from '../cmsStore';
 
 export const AdminTrainersPage: React.FC = () => {
   const [trainers, setTrainers] = useState<Trainer[]>(cmsStore.getTrainers());
@@ -32,7 +32,7 @@ export const AdminTrainersPage: React.FC = () => {
             <p className="text-xs font-bold text-[#087F78]">{trainer.designation}</p>
             <p className="text-xs text-gray-500 line-clamp-2">{trainer.bio}</p>
             <div className="flex flex-wrap justify-center gap-1 pt-2">
-              {trainer.specialization.map((spec, idx) => (
+              {trainer.specialization.map((spec: string, idx: number) => (
                 <span key={idx} className="px-2 py-0.5 rounded bg-teal-50 text-[10px] font-semibold text-[#087F78]">
                   {spec}
                 </span>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Plus, Edit3, Trash2, Eye, FolderKanban, MessageSquare, HelpCircle, CheckCircle2 } from 'lucide-react';
-import { cmsStore, BlogPost } from '../cmsStore';
+import { cmsStore, type BlogPost, type Testimonial } from '../cmsStore';
 
 export const AdminContentPage: React.FC = () => {
   const navigate = useNavigate();
@@ -9,7 +9,7 @@ export const AdminContentPage: React.FC = () => {
 
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>(cmsStore.getBlogPosts());
   const [projects] = useState(cmsStore.getProjects());
-  const [testimonials] = useState(cmsStore.getTestimonials());
+  const [testimonials] = useState<Testimonial[]>(cmsStore.getTestimonials());
   const [faqs] = useState(cmsStore.getFAQs());
 
   // Blog Editor Modal
@@ -19,7 +19,7 @@ export const AdminContentPage: React.FC = () => {
     slug: '',
     category: 'Programming',
     excerpt: '',
-    content: '',
+    content: [],
     readTime: '5 min read',
     tags: ['SSCI', 'Tutorial']
   });
@@ -64,7 +64,7 @@ export const AdminContentPage: React.FC = () => {
         {activeTab === 'blog' && (
           <button
             onClick={() => {
-              setBlogFormData({ title: '', slug: '', category: 'Programming', excerpt: '', content: '', readTime: '5 min read', tags: ['SSCI'] });
+              setBlogFormData({ title: '', slug: '', category: 'Programming', excerpt: '', content: [], readTime: '5 min read', tags: ['SSCI'] });
               setIsBlogModalOpen(true);
             }}
             className="py-2.5 px-4 rounded-xl brand-gradient-bg text-white text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
@@ -133,7 +133,6 @@ export const AdminContentPage: React.FC = () => {
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => navigate(`/blog/${post.slug}`)}
-                          target="_blank"
                           className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
                         >
                           <Eye className="w-3.5 h-3.5" />
@@ -159,7 +158,7 @@ export const AdminContentPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {projects.map((proj) => (
             <div key={proj.id} className="bg-white p-5 rounded-2xl border border-teal-100 space-y-2">
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${proj.badgeColor}`}>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#087F78]/10 text-[#087F78]`}>
                 {proj.category}
               </span>
               <h4 className="text-base font-bold text-[#123B3A]">{proj.title}</h4>
@@ -172,14 +171,15 @@ export const AdminContentPage: React.FC = () => {
       {/* TESTIMONIALS TAB */}
       {activeTab === 'testimonials' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {testimonials.map((t) => (
+          {testimonials.map((t: Testimonial) => (
             <div key={t.id} className="bg-white p-5 rounded-2xl border border-teal-100 space-y-2">
               <h4 className="text-sm font-bold text-[#123B3A]">{t.name} • <span className="text-[#087F78]">{t.course}</span></h4>
-              <p className="text-xs text-gray-600 italic">"{t.content}"</p>
+              <p className="text-xs text-gray-600 italic">"{t.quote}"</p>
             </div>
           ))}
         </div>
       )}
+
 
       {/* FAQS TAB */}
       {activeTab === 'faqs' && (
@@ -219,11 +219,11 @@ export const AdminContentPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#123B3A] mb-1">Content (HTML / Markdown)</label>
+              <label className="block text-xs font-bold text-[#123B3A] mb-1">Content (Paragraphs separated by double newline)</label>
               <textarea
                 rows={4}
-                value={blogFormData.content || ''}
-                onChange={(e) => setBlogFormData({ ...blogFormData, content: e.target.value })}
+                value={Array.isArray(blogFormData.content) ? blogFormData.content.join('\n\n') : (blogFormData.content || '')}
+                onChange={(e) => setBlogFormData({ ...blogFormData, content: e.target.value.split('\n\n') })}
                 className="w-full p-3 rounded-xl border border-gray-200 text-xs"
               />
             </div>

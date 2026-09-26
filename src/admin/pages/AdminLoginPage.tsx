@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, Mail, ArrowRight, CheckCircle2, Building2 } from 'lucide-react';
-import { cmsStore, AdminUser } from '../cmsStore';
+import { cmsStore, type AdminUser } from '../cmsStore';
 
 export const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Search, Plus, Award, CheckCircle2 } from 'lucide-react';
-import { cmsStore, Student } from '../cmsStore';
+import { cmsStore, type Student } from '../cmsStore';
 
 export const AdminStudentsPage: React.FC = () => {
   const [students, setStudents] = useState<Student[]>(cmsStore.getStudents());

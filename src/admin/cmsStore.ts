@@ -1,13 +1,16 @@
-import { COURSES_DATA, Course } from '../data/courses';
-import { UPCOMING_BATCHES, Batch } from '../data/batches';
-import { BLOG_POSTS, BlogPost } from '../data/blog';
-import { FACULTY_TRAINERS, Trainer } from '../data/trainers';
-import { TESTIMONIALS_DATA, TestimonialItem } from '../data/testimonials';
-import { STUDENT_PROJECTS, StudentProject } from '../data/projects';
-import { GLOBAL_FAQS, FAQItem } from '../data/faqs';
-import { LEARNING_PATHS, LearningPath } from '../data/learningPaths';
-import { FLOATING_SKILLS, FloatingSkill } from '../components/home/FloatingTechnologies';
+import { COURSES_DATA, type Course } from '../data/courses';
+import { UPCOMING_BATCHES, type Batch } from '../data/batches';
+import { BLOG_POSTS, type BlogPost } from '../data/blog';
+import { FACULTY_TRAINERS, type Trainer } from '../data/trainers';
+import { STUDENT_TESTIMONIALS, type Testimonial } from '../data/testimonials';
+import { STUDENT_PROJECTS, type StudentProject } from '../data/projects';
+import { GLOBAL_FAQS, type FAQItem } from '../data/faqs';
+import { LEARNING_PATHS, type LearningPath } from '../data/learningPaths';
+import { FLOATING_SKILLS, type FloatingSkill } from '../components/home/FloatingTechnologies';
 import { SITE_CONFIG } from '../config/site';
+
+export type { Course, Batch, BlogPost, Trainer, Testimonial, StudentProject, FAQItem, LearningPath, FloatingSkill };
+
 
 export interface AdminUser {
   id: string;
@@ -140,7 +143,7 @@ const defaultInitialState = {
   batches: UPCOMING_BATCHES,
   blogPosts: BLOG_POSTS,
   trainers: FACULTY_TRAINERS,
-  testimonials: TESTIMONIALS_DATA,
+  testimonials: STUDENT_TESTIMONIALS,
   projects: STUDENT_PROJECTS,
   faqs: GLOBAL_FAQS,
   learningPaths: LEARNING_PATHS,
@@ -536,13 +539,16 @@ class CMSStore {
         id: batchData.id || `BATCH-${Date.now().toString().slice(-4)}`,
         courseSlug: batchData.courseSlug || 'python-programming',
         courseName: batchData.courseName,
+        category: batchData.category || 'Programming',
+        level: batchData.level || 'Beginner to Advanced',
+        duration: batchData.duration || '60 Days',
+        timing: (batchData.timing as any) || 'Morning',
+        timeRange: batchData.timeRange || '10:00 AM – 12:00 PM',
         startDate: batchData.startDate || 'Next Monday',
-        timing: batchData.timing || 'Morning (10:00 AM - 12:00 PM)',
-        days: batchData.days || 'Mon - Fri',
         mode: batchData.mode || 'Practical Lab',
-        status: batchData.status || 'Upcoming',
-        availableSeats: batchData.availableSeats ?? 10,
+        status: (batchData.status as any) || 'Starting Soon',
         totalSeats: batchData.totalSeats ?? 20,
+        filledSeats: batchData.filledSeats ?? 10,
         trainerName: batchData.trainerName || 'Senior SSCI Faculty'
       };
       this.state.batches.unshift(newBatch);
@@ -657,20 +663,29 @@ class CMSStore {
   // Blog CMS
   public saveBlogPost(postData: Partial<BlogPost> & { slug: string; title: string }) {
     const existingIndex = this.state.blogPosts.findIndex((b) => b.slug === postData.slug);
+    const contentArray = Array.isArray(postData.content) 
+      ? postData.content 
+      : typeof postData.content === 'string' 
+        ? [postData.content] 
+        : ['Article content coming soon.'];
     if (existingIndex >= 0) {
-      this.state.blogPosts[existingIndex] = { ...this.state.blogPosts[existingIndex], ...postData } as BlogPost;
+      this.state.blogPosts[existingIndex] = { 
+        ...this.state.blogPosts[existingIndex], 
+        ...postData,
+        content: contentArray
+      } as BlogPost;
       this.logAudit(this.getUserName(), 'UPDATE_BLOG', 'Content', `Updated blog post "${postData.title}".`);
     } else {
       const newPost: BlogPost = {
         slug: postData.slug,
         title: postData.title,
         excerpt: postData.excerpt || 'Practical guidance and learning roadmap from SSCI Nellore.',
-        content: postData.content || '<p>Article content coming soon.</p>',
+        content: contentArray,
         date: postData.date || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         author: postData.author || 'SSCI Editorial Team',
+        authorRole: postData.authorRole || 'Senior Instructor',
         readTime: postData.readTime || '5 min read',
         category: postData.category || 'Programming',
-        imageUrl: postData.imageUrl || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1000&q=80',
         tags: postData.tags || ['Computer Education', 'SSCI']
       };
       this.state.blogPosts.unshift(newPost);
