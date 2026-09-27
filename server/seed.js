@@ -16,15 +16,8 @@ import { HeroContent } from './models/HeroContent.js';
 import { Announcement } from './models/Announcement.js';
 import { FloatingSkill } from './models/FloatingSkill.js';
 
-// Import existing content datasets
-import { COURSES_DATA } from '../src/data/courses.js';
-import { UPCOMING_BATCHES } from '../src/data/batches.js';
-import { BLOG_POSTS } from '../src/data/blog.js';
-import { FACULTY_TRAINERS } from '../src/data/trainers.js';
-import { STUDENT_TESTIMONIALS } from '../src/data/testimonials.js';
-import { STUDENT_PROJECTS } from '../src/data/projects.js';
-import { GLOBAL_FAQS } from '../src/data/faqs.js';
-import { SITE_CONFIG } from '../src/config/site.js';
+// Import existing content datasets from pure JS seedData module
+import { COURSES_DATA, UPCOMING_BATCHES, BLOG_POSTS, FACULTY_TRAINERS, SITE_CONFIG } from './seedData.js';
 
 dotenv.config();
 
