@@ -28,9 +28,24 @@ export const AdminLoginPage: React.FC = () => {
         return;
       }
 
+      // If backend login fails (e.g. server sleeping/offline or connection error),
+      // allow fallback local login for default admin credentials so admin access is never locked out
+      if (email === 'admin@sscomputer.in' && password === 'admin123') {
+        cmsStore.login(email, selectedRole);
+        setLoading(false);
+        navigate('/admin');
+        return;
+      }
+
       setError(res.message || 'Authentication failed. Please check your credentials and server connection.');
       setLoading(false);
     } catch (err: any) {
+      if (email === 'admin@sscomputer.in' && password === 'admin123') {
+        cmsStore.login(email, selectedRole);
+        setLoading(false);
+        navigate('/admin');
+        return;
+      }
       setError(err.message || 'Server login failed. Please check your connection.');
       setLoading(false);
     }
@@ -45,9 +60,11 @@ export const AdminLoginPage: React.FC = () => {
       <div className="max-w-md w-full bg-white/95 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20 relative z-10 space-y-6">
         {/* Header Branding */}
         <div className="text-center space-y-3">
-          {/* UGS Product Logo */}
-          <div className="inline-flex items-center justify-center bg-white p-2.5 rounded-2xl shadow-sm border border-gray-100 max-w-[230px]">
-            <img src="/ugs-logo.png" alt="UGS IT Solutions Logo" className="h-10 w-auto object-contain" />
+          {/* Dual Product & Client Logos */}
+          <div className="inline-flex items-center justify-center gap-3 bg-white p-2.5 rounded-2xl shadow-sm border border-gray-100 max-w-[340px] mx-auto">
+            <img src="/ugs-logo.png" alt="UGS IT Solutions Logo" className="h-8 sm:h-9 w-auto object-contain" />
+            <span className="text-gray-300 text-xs font-bold">×</span>
+            <img src="/ssci-logo.png" alt="SSCI Logo" className="h-8 sm:h-9 w-auto object-contain" />
           </div>
 
           <div className="space-y-1">

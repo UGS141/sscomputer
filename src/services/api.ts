@@ -1,6 +1,6 @@
 import { SITE_CONFIG } from '../config/site';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://sscomputer-api.onrender.com' : '');
 
 export interface EnquiryPayload {
   name: string;
