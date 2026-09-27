@@ -24,6 +24,7 @@ import { BlogPage } from './pages/BlogPage';
 import { BlogDetailPage } from './pages/BlogDetailPage';
 import { ContactPage } from './pages/ContactPage';
 import { CertificateVerificationPage } from './pages/CertificateVerificationPage';
+import { StudentLoginPage } from './pages/StudentLoginPage';
 
 // Admin CMS & CRM Components
 import { AdminLayout } from './admin/AdminLayout';
@@ -126,6 +127,7 @@ export const App: React.FC = () => {
                   <Route path="/blog/:slug" element={<BlogDetailPage />} />
                   <Route path="/contact" element={<ContactPage />} />
                   <Route path="/verify-certificate" element={<CertificateVerificationPage />} />
+                  <Route path="/student-login" element={<StudentLoginPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </div>

@@ -338,7 +338,8 @@ class CMSStore {
         this.state = {
           ...defaultInitialState,
           ...parsed,
-          // Ensure nested objects fallback cleanly
+          // Ensure nested objects and floatingSkills fallback cleanly
+          floatingSkills: defaultInitialState.floatingSkills,
           heroContent: parsed.heroContent || defaultInitialState.heroContent,
           announcement: parsed.announcement || defaultInitialState.announcement,
           settings: parsed.settings || defaultInitialState.settings,

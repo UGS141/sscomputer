@@ -190,7 +190,15 @@ export const FloatingTechnologies: React.FC = () => {
   return (
     <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden sm:overflow-visible">
       {skills.map((skill) => {
-        const IconComp = typeof skill.icon === 'string' ? (ICON_MAP[skill.icon] || Code2) : (skill.icon || Code2);
+        let IconComp: React.FC<{ className?: string }> = Code2;
+        if (typeof skill.icon === 'string' && ICON_MAP[skill.icon]) {
+          IconComp = ICON_MAP[skill.icon];
+        } else if (typeof skill.icon === 'function') {
+          IconComp = skill.icon as React.FC<{ className?: string }>;
+        } else {
+          IconComp = Code2;
+        }
+
         return (
           <div
             key={skill.id}

@@ -6,11 +6,11 @@ import type { Course } from '../../data/courses';
 import { HorizontalAutoCarousel } from '../common/HorizontalAutoCarousel';
 
 export const CourseCategoriesSection: React.FC = () => {
-  const [courses, setCourses] = useState<Course[]>(cmsStore.getCourses());
+  const [courses, setCourses] = useState<Course[]>(() => cmsStore.getCourses() || []);
 
   useEffect(() => {
     const unsubscribe = cmsStore.subscribe(() => {
-      setCourses([...cmsStore.getCourses()]);
+      setCourses([...(cmsStore.getCourses() || [])]);
     });
     return unsubscribe;
   }, []);
@@ -74,7 +74,7 @@ export const CourseCategoriesSection: React.FC = () => {
                     Skills & Tools:
                   </span>
                   <div className="flex flex-wrap gap-1">
-                    {course.skillsLearned.slice(0, 4).map((skill, idx) => (
+                    {(course.skillsLearned || []).slice(0, 4).map((skill, idx) => (
                       <span
                         key={idx}
                         className="px-2 py-0.5 rounded bg-white text-gray-700 text-[10px] font-semibold border border-gray-200/60"

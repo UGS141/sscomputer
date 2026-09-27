@@ -10,11 +10,11 @@ interface UpcomingBatchesSectionProps {
 }
 
 export const UpcomingBatchesSection: React.FC<UpcomingBatchesSectionProps> = ({ onOpenEnquiry }) => {
-  const [batches, setBatches] = useState<Batch[]>(cmsStore.getBatches());
+  const [batches, setBatches] = useState<Batch[]>(() => cmsStore.getBatches() || []);
 
   useEffect(() => {
     const unsubscribe = cmsStore.subscribe(() => {
-      setBatches([...cmsStore.getBatches()]);
+      setBatches([...(cmsStore.getBatches() || [])]);
     });
     return unsubscribe;
   }, []);

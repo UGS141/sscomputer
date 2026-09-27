@@ -1,6 +1,6 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { X, Phone, Mail, CheckCircle, UserCheck, MessageSquare, ChevronRight } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { X, Phone, Mail, CheckCircle, GraduationCap, ShieldCheck, MessageSquare, ChevronRight } from 'lucide-react';
 import { SITE_CONFIG, generateWhatsAppUrl } from '../../config/site';
 
 interface MobileMenuProps {
@@ -14,9 +14,9 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
   isOpen,
   onClose,
   onOpenEnquiry,
-  onOpenLogin,
 }) => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   if (!isOpen) return null;
 
@@ -90,18 +90,35 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
           </div>
         </div>
 
-        {/* Footer CTAs & Contact Info */}
-        <div className="p-4 border-t border-teal-100 bg-[#F7FAF9] space-y-3">
-          <button
-            onClick={() => {
-              onClose();
-              onOpenLogin();
-            }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold text-[#087F78] border border-teal-200 bg-white hover:bg-teal-50"
-          >
-            <UserCheck className="w-4 h-4 text-[#087F78]" />
-            Student Login Portal
-          </button>
+        {/* Footer CTAs & Portal Logins */}
+        <div className="p-4 border-t border-teal-100 bg-[#F7FAF9] space-y-2.5">
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#087F78] px-1">
+            Portal Logins
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => {
+                onClose();
+                navigate('/student-login');
+              }}
+              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold text-[#087F78] border border-teal-200 bg-white hover:bg-teal-50 shadow-xs"
+            >
+              <GraduationCap className="w-4 h-4 text-[#087F78]" />
+              Student Login
+            </button>
+
+            <button
+              onClick={() => {
+                onClose();
+                navigate('/admin/login');
+              }}
+              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold text-[#F97316] border border-orange-200 bg-white hover:bg-orange-50 shadow-xs"
+            >
+              <ShieldCheck className="w-4 h-4 text-[#F97316]" />
+              Admin Login
+            </button>
+          </div>
 
           <button
             onClick={() => {
@@ -123,7 +140,7 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
             Chat on WhatsApp
           </a>
 
-          <div className="pt-2 text-[11px] text-gray-500 space-y-1 text-center">
+          <div className="pt-1 text-[11px] text-gray-500 space-y-0.5 text-center">
             <p className="flex items-center justify-center gap-1">
               <Phone className="w-3 h-3 text-[#F97316]" /> {SITE_CONFIG.contact.phonePrimary}
             </p>

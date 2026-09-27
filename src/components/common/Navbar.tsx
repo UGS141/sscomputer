@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Phone, Mail, Menu, CheckCircle, UserCheck, MessageSquare, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Phone, Mail, Menu, CheckCircle, UserRound, MessageSquare, ArrowRight, ChevronDown, GraduationCap, ShieldCheck } from 'lucide-react';
 import { SITE_CONFIG, generateWhatsAppUrl } from '../../config/site';
 
 interface NavbarProps {
@@ -9,9 +9,13 @@ interface NavbarProps {
   onOpenMobileMenu: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenEnquiry, onOpenLogin, onOpenMobileMenu }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenEnquiry, onOpenMobileMenu }) => {
   const [scrolled, setScrolled] = useState(false);
+  const [isLoginDropdownOpen, setIsLoginDropdownOpen] = useState(false);
+  const loginDropdownRef = useRef<HTMLDivElement>(null);
+
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -19,6 +23,28 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEnquiry, onOpenLogin, onOp
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Close dropdown on outside click or ESC key
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (loginDropdownRef.current && !loginDropdownRef.current.contains(event.target as Node)) {
+        setIsLoginDropdownOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsLoginDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const isActive = (path: string) => {
@@ -221,14 +247,77 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEnquiry, onOpenLogin, onOp
 
             {/* Action Buttons */}
             <div className="flex items-center gap-3 shrink-0">
-              <button
-                onClick={onOpenLogin}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs xl:text-sm font-bold text-[#087F78] bg-white/40 border border-teal-200/80 hover:bg-white/80 hover:border-[#087F78] transition-all duration-200 shadow-xs"
-              >
-                <UserCheck className="w-4 h-4 text-[#087F78]" />
-                <span className="whitespace-nowrap">Student Login</span>
-              </button>
+              {/* Login Selector Dropdown Trigger */}
+              <div className="relative" ref={loginDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsLoginDropdownOpen((prev) => !prev)}
+                  aria-label="Login"
+                  aria-expanded={isLoginDropdownOpen}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs xl:text-sm font-bold text-[#087F78] bg-white/60 border border-teal-200/80 hover:bg-white hover:border-[#087F78] transition-all duration-200 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#087F78]/30"
+                >
+                  <UserRound className="w-4 h-4 text-[#087F78]" />
+                  <span className="whitespace-nowrap">Login</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-[#087F78] transition-transform duration-200 ${isLoginDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
 
+                {/* Login Dropdown Menu */}
+                {isLoginDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-teal-100 p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="px-3 py-1.5 border-b border-gray-100 mb-1">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#087F78] block">
+                        Select Portal Login
+                      </span>
+                    </div>
+
+                    {/* Student Login Option */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLoginDropdownOpen(false);
+                        navigate('/student-login');
+                      }}
+                      className="w-full flex items-start gap-3 p-2.5 rounded-xl hover:bg-teal-50/80 text-left transition-colors group"
+                    >
+                      <div className="p-2 rounded-lg bg-teal-50 text-[#087F78] group-hover:bg-[#087F78] group-hover:text-white transition-colors shrink-0">
+                        <GraduationCap className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-[#123B3A] group-hover:text-[#087F78] transition-colors">
+                          Student Login
+                        </div>
+                        <div className="text-[10px] text-gray-500 font-medium leading-tight mt-0.5">
+                          Access student portal, courses & resources
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Admin Login Option */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLoginDropdownOpen(false);
+                        navigate('/admin/login');
+                      }}
+                      className="w-full flex items-start gap-3 p-2.5 rounded-xl hover:bg-teal-50/80 text-left transition-colors group mt-0.5"
+                    >
+                      <div className="p-2 rounded-lg bg-orange-50 text-[#F97316] group-hover:bg-[#F97316] group-hover:text-white transition-colors shrink-0">
+                        <ShieldCheck className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-[#123B3A] group-hover:text-[#087F78] transition-colors">
+                          Admin Login
+                        </div>
+                        <div className="text-[10px] text-gray-500 font-medium leading-tight mt-0.5">
+                          Manage institute CMS, batches & website
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Enquire Now Button */}
               <button
                 onClick={() => onOpenEnquiry()}
                 className="px-5 py-2 rounded-xl text-xs xl:text-sm font-bold text-white bg-gradient-to-r from-[#087F78] to-[#12A77A] shadow-md shadow-teal-700/20 hover:shadow-lg hover:shadow-teal-700/30 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-1.5 group"
