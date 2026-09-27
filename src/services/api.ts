@@ -48,6 +48,24 @@ export const apiService = {
     }
   },
 
+  // Real Backend Admin Login
+  login: async (email: string, password: string): Promise<{ success: boolean; token?: string; user?: any; message?: string }> => {
+    const res = await apiService.request('/api/auth/login', 'POST', { email, password });
+    if (res?.success && res?.token) {
+      localStorage.setItem('ssci_jwt_token', res.token);
+      if (res.user) {
+        localStorage.setItem('ssci_user', JSON.stringify(res.user));
+      }
+    }
+    return res || { success: false, message: 'Backend login failed. Server unreachable.' };
+  },
+
+  // Admin Logout
+  logout: () => {
+    localStorage.removeItem('ssci_jwt_token');
+    localStorage.removeItem('ssci_user');
+  },
+
   // Submit Enquiry (Genuine Backend Call — No Fake Success)
   submitEnquiry: async (payload: EnquiryPayload): Promise<{ success: boolean; message: string }> => {
     const data = await apiService.request('/api/leads', 'POST', { ...payload, source: 'Website' });

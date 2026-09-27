@@ -43,7 +43,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ onOpenEnquiry }) => {
       setCourses(cmsStore.getCourses() || COURSES_DATA);
     });
     apiService.getCourses().then((res) => {
-      if (res?.success && Array.isArray(res.courses) && res.courses.length > 0) {
+      if (res?.success && Array.isArray(res.courses)) {
         setCourses(res.courses);
       }
     });

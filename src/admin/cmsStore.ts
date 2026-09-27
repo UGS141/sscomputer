@@ -502,6 +502,24 @@ class CMSStore {
   // --- MUTATORS (WITH AUDIT LOGGING & AWAITED API WRITES) ---
 
   // Auth
+  public async loginWithBackend(email: string, password: string): Promise<{ success: boolean; message?: string }> {
+    const res = await apiService.login(email, password);
+    if (res?.success && res.user) {
+      const user: AdminUser = {
+        id: res.user.id || `user-${Date.now()}`,
+        name: res.user.name || 'SSCI Admin',
+        email: res.user.email || email,
+        role: res.user.role || 'SUPER ADMIN',
+        permissions: res.user.permissions || ['all']
+      };
+      this.state.currentUser = user;
+      this.logAudit(user.name, 'LOGIN', 'Authentication', `Admin user "${user.name}" logged in via backend API.`);
+      this.saveToStorage();
+      return { success: true };
+    }
+    return { success: false, message: res?.message || 'Authentication failed. Please check credentials or backend connection.' };
+  }
+
   public login(email: string, role: AdminUser['role'] = 'ADMIN'): boolean {
     const nameMap: Record<string, string> = {
       'SUPER ADMIN': 'Master Admin',
@@ -527,6 +545,7 @@ class CMSStore {
   }
 
   public logout() {
+    apiService.logout();
     if (this.state.currentUser) {
       this.logAudit(this.state.currentUser.name, 'LOGOUT', 'Authentication', 'User logged out.');
     }

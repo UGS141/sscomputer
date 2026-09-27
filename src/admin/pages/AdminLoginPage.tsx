@@ -11,7 +11,7 @@ export const AdminLoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       setError('Please enter email and password.');
@@ -20,11 +20,20 @@ export const AdminLoginPage: React.FC = () => {
     setLoading(true);
     setError('');
 
-    setTimeout(() => {
-      cmsStore.login(email, selectedRole);
+    try {
+      const res = await cmsStore.loginWithBackend(email, password);
+      if (res.success) {
+        setLoading(false);
+        navigate('/admin');
+        return;
+      }
+
+      setError(res.message || 'Authentication failed. Please check your credentials and server connection.');
       setLoading(false);
-      navigate('/admin');
-    }, 600);
+    } catch (err: any) {
+      setError(err.message || 'Server login failed. Please check your connection.');
+      setLoading(false);
+    }
   };
 
   return (

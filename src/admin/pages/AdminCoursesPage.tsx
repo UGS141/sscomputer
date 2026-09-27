@@ -40,19 +40,27 @@ export const AdminCoursesPage: React.FC = () => {
     return matchesSearch && matchesCat && matchesLevel;
   });
 
-  const handleDelete = (slug: string, title: string) => {
+  const handleDelete = async (slug: string, title: string) => {
     if (window.confirm(`Are you sure you want to delete the course "${title}"?`)) {
-      cmsStore.deleteCourse(slug);
+      try {
+        await cmsStore.deleteCourse(slug);
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete course from database.');
+      }
     }
   };
 
-  const handleDuplicate = (course: Course) => {
+  const handleDuplicate = async (course: Course) => {
     const newSlug = `${course.slug}-copy-${Date.now().toString().slice(-4)}`;
-    cmsStore.saveCourse({
-      ...course,
-      slug: newSlug,
-      title: `${course.title} (Copy)`,
-    });
+    try {
+      await cmsStore.saveCourse({
+        ...course,
+        slug: newSlug,
+        title: `${course.title} (Copy)`,
+      });
+    } catch (err: any) {
+      alert(err.message || 'Failed to duplicate course on database.');
+    }
   };
 
   return (

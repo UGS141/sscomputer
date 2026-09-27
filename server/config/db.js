@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import dns from 'dns';
 
 export const connectDB = async () => {
   const mongoURI = process.env.MONGODB_URI;
@@ -9,10 +10,16 @@ export const connectDB = async () => {
   }
 
   try {
+    dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
+  } catch (dnsErr) {
+    console.warn('⚠️ Custom DNS servers could not be set:', dnsErr.message);
+  }
+
+  try {
     const conn = await mongoose.connect(mongoURI, {
       dbName: 'ssci',
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
     });
 

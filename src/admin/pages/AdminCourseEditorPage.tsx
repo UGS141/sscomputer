@@ -48,6 +48,8 @@ export const AdminCourseEditorPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'basic' | 'curriculum' | 'outcomes' | 'faqs' | 'seo'>('basic');
   const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (existingCourse) {
@@ -55,16 +57,26 @@ export const AdminCourseEditorPage: React.FC = () => {
     }
   }, [existingCourse]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.slug) return;
 
-    cmsStore.saveCourse(formData as Course);
-    setSuccessMsg('Course saved and updated on public website!');
-    setTimeout(() => {
-      setSuccessMsg('');
-      navigate('/admin/courses');
-    }, 1200);
+    setSaving(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      await cmsStore.saveCourse(formData as Course);
+      setSuccessMsg('Course saved and updated on public website!');
+      setTimeout(() => {
+        setSuccessMsg('');
+        navigate('/admin/courses');
+      }, 1200);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to save course to backend database. Please check your admin permissions and connection.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Title to slug generator
@@ -162,6 +174,13 @@ export const AdminCourseEditorPage: React.FC = () => {
         <div className="p-4 rounded-2xl bg-emerald-50 text-[#12A77A] text-xs font-bold flex items-center gap-2 border border-emerald-200">
           <CheckCircle2 className="w-5 h-5" />
           <span>{successMsg}</span>
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="p-4 rounded-2xl bg-red-50 text-red-700 text-xs font-bold flex items-center gap-2 border border-red-200">
+          <Sparkles className="w-5 h-5 text-red-500 shrink-0" />
+          <span>{errorMsg}</span>
         </div>
       )}
 

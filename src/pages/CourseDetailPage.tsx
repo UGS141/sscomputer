@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { Clock, Award, CheckCircle2, ChevronDown, Monitor, Sparkles, FolderKanban, ShieldCheck } from 'lucide-react';
-import { getCourseBySlug } from '../data/courses';
+import { getCourseBySlug as getStaticCourseBySlug, type Course } from '../data/courses';
 import { Breadcrumb } from '../components/common/Breadcrumb';
 import { SEOHead } from '../seo/SEOHead';
 import { generateCourseSchema, generateBreadcrumbSchema, generateFAQSchema } from '../seo/schemas';
 import { trackSEOEvent } from '../seo/analytics';
+import { cmsStore } from '../admin/cmsStore';
+import { apiService } from '../services/api';
 
 interface CourseDetailPageProps {
   onOpenEnquiry: (courseTitle?: string) => void;
@@ -13,15 +15,42 @@ interface CourseDetailPageProps {
 
 export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ onOpenEnquiry }) => {
   const { slug } = useParams<{ slug: string }>();
-  const course = getCourseBySlug(slug || '');
+  const [course, setCourse] = useState<Course | undefined>(() => 
+    cmsStore.getCourseBySlug(slug || '') || getStaticCourseBySlug(slug || '')
+  );
+  const [loading, setLoading] = useState(!course);
 
   const [openModuleIdx, setOpenModuleIdx] = useState<number | null>(0);
+
+  useEffect(() => {
+    if (!slug) return;
+    const storeMatch = cmsStore.getCourseBySlug(slug);
+    if (storeMatch) setCourse(storeMatch);
+
+    apiService.getCourseBySlug(slug).then((res) => {
+      if (res?.success && res.course) {
+        setCourse(res.course);
+      }
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [slug]);
 
   useEffect(() => {
     if (course) {
       trackSEOEvent('course_view', { course_slug: course.slug, course_title: course.title });
     }
   }, [course]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F7FAF9] flex items-center justify-center p-8">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-[#087F78] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-bold text-[#123B3A]">Loading Course Details...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!course) {
     return <Navigate to="/courses" replace />;
