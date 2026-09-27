@@ -8,6 +8,8 @@ import { SEOHead } from '../seo/SEOHead';
 import { generateLocalBusinessSchema, generateBreadcrumbSchema } from '../seo/schemas';
 import { trackSEOEvent } from '../seo/analytics';
 
+import { cmsStore } from '../admin/cmsStore';
+
 export const ContactPage: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
@@ -20,18 +22,25 @@ export const ContactPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.phone) return;
 
     setLoading(true);
+    setErrorMsg('');
     try {
-      await apiService.submitEnquiry(formData);
-      trackSEOEvent('contact_form_submit', { course: formData.courseInterested });
-      setSubmitted(true);
-    } catch (err) {
-      console.error(err);
+      const res = await apiService.submitEnquiry(formData);
+      if (res.success) {
+        trackSEOEvent('contact_form_submit', { course: formData.courseInterested });
+        cmsStore.refreshFromBackend();
+        setSubmitted(true);
+      } else {
+        setErrorMsg(res.message || 'Submission failed. Please check your details and try again.');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Network connection error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -198,6 +207,11 @@ export const ContactPage: React.FC = () => {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {errorMsg && (
+                    <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+                      {errorMsg}
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs font-bold text-[#123B3A] uppercase tracking-wider mb-1">
                       Full Name <span className="text-red-500">*</span>

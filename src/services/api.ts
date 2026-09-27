@@ -67,8 +67,12 @@ export const apiService = {
   },
 
   // Submit Enquiry (Genuine Backend Call — No Fake Success)
-  submitEnquiry: async (payload: EnquiryPayload): Promise<{ success: boolean; message: string }> => {
-    const data = await apiService.request('/api/leads', 'POST', { ...payload, source: 'Website' });
+  submitEnquiry: async (payload: EnquiryPayload & { preferredTiming?: string }): Promise<{ success: boolean; message: string }> => {
+    const data = await apiService.request('/api/leads', 'POST', {
+      ...payload,
+      preferredBatch: payload.preferredBatch || payload.preferredTiming || 'Any Batch',
+      source: 'Website',
+    });
     if (data?.success) {
       return { success: true, message: data.message || 'Enquiry submitted successfully.' };
     }
@@ -121,6 +125,9 @@ export const apiService = {
   },
   getLeads: async () => {
     return await apiService.request('/api/leads');
+  },
+  updateLeadStatus: async (id: string, status: string, noteText?: string) => {
+    return await apiService.request(`/api/leads/${id}/status`, 'PUT', { status, noteText });
   },
   getCertificates: async () => {
     return await apiService.request('/api/certificates');

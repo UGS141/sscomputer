@@ -5,6 +5,8 @@ import { apiService } from '../../services/api';
 import { generateWhatsAppUrl } from '../../config/site';
 import { trackSEOEvent } from '../../seo/analytics';
 
+import { cmsStore } from '../../admin/cmsStore';
+
 interface EnquiryModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -23,6 +25,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     if (prefilledCourse) {
@@ -37,12 +40,22 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
     if (!formData.name || !formData.phone) return;
 
     setLoading(true);
+    setErrorMsg('');
     try {
-      await apiService.submitEnquiry(formData);
-      trackSEOEvent('course_enquiry', { course: formData.courseInterested });
-      setSubmitted(true);
-    } catch (err) {
-      console.error(err);
+      const res = await apiService.submitEnquiry({
+        ...formData,
+        preferredBatch: formData.preferredTiming || 'Any Batch',
+      });
+
+      if (res.success) {
+        trackSEOEvent('course_enquiry', { course: formData.courseInterested });
+        cmsStore.refreshFromBackend();
+        setSubmitted(true);
+      } else {
+        setErrorMsg(res.message || 'We could not submit your enquiry right now. Please check your information and try again.');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Network connection error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -50,6 +63,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
 
   const handleResetAndClose = () => {
     setSubmitted(false);
+    setErrorMsg('');
     setFormData({
       name: '',
       phone: '',
@@ -122,6 +136,11 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {errorMsg && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+                  {errorMsg}
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-[#123B3A] uppercase tracking-wider mb-1">
                   Full Name <span className="text-red-500">*</span>

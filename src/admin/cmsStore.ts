@@ -334,7 +334,7 @@ class CMSStore {
 
   public async refreshFromBackend() {
     try {
-      const [coursesRes, batchesRes, blogRes, trainersRes, heroRes, settingsRes, annRes, skillsRes] = await Promise.all([
+      const [coursesRes, batchesRes, blogRes, trainersRes, heroRes, settingsRes, annRes, skillsRes, leadsRes] = await Promise.all([
         apiService.getCourses(),
         apiService.getBatches(),
         apiService.getBlogPosts(),
@@ -343,6 +343,7 @@ class CMSStore {
         apiService.getSettings(),
         apiService.getAnnouncement(),
         apiService.getFloatingSkills(),
+        apiService.getLeads(),
       ]);
 
       if (coursesRes?.success && Array.isArray(coursesRes.courses)) {
@@ -368,6 +369,9 @@ class CMSStore {
       }
       if (skillsRes?.success && Array.isArray(skillsRes.skills)) {
         this.state.floatingSkills = skillsRes.skills;
+      }
+      if (leadsRes?.success && Array.isArray(leadsRes.leads)) {
+        this.state.leads = leadsRes.leads;
       }
       this.saveToStorage();
     } catch (e) {
@@ -694,43 +698,55 @@ class CMSStore {
     return newLead;
   }
 
-  public updateLeadStatus(id: string, newStatus: Lead['status']) {
+  public async updateLeadStatus(id: string, newStatus: Lead['status']) {
     const lead = this.state.leads.find((l) => l.id === id);
     if (lead) {
-      const oldStatus = lead.status;
-      lead.status = newStatus;
-      lead.updatedAt = new Date().toISOString();
-      lead.timeline.unshift({
-        id: `t-${Date.now()}`,
-        title: 'Status Updated',
-        description: `Changed status from ${oldStatus} to ${newStatus}.`,
-        timestamp: new Date().toISOString(),
-        type: 'status_change'
-      });
+      const res = await apiService.updateLeadStatus(id, newStatus);
+      if (res?.success && res.lead) {
+        const idx = this.state.leads.findIndex((l) => l.id === id);
+        if (idx >= 0) this.state.leads[idx] = res.lead;
+      } else {
+        const oldStatus = lead.status;
+        lead.status = newStatus;
+        lead.updatedAt = new Date().toISOString();
+        lead.timeline.unshift({
+          id: `t-${Date.now()}`,
+          title: 'Status Updated',
+          description: `Changed status from ${oldStatus} to ${newStatus}.`,
+          timestamp: new Date().toISOString(),
+          type: 'status_change'
+        });
+      }
       this.logAudit(this.getUserName(), 'UPDATE_LEAD_STATUS', 'CRM', `Updated lead ${id} status to ${newStatus}.`);
       this.saveToStorage();
     }
   }
 
-  public addLeadNote(id: string, text: string) {
+  public async addLeadNote(id: string, text: string) {
     const lead = this.state.leads.find((l) => l.id === id);
     if (lead) {
-      const author = this.getUserName();
-      const note: LeadNote = {
-        id: `note-${Date.now()}`,
-        text,
-        author,
-        timestamp: new Date().toISOString()
-      };
-      lead.notes.unshift(note);
-      lead.timeline.unshift({
-        id: `t-${Date.now()}`,
-        title: 'Note Added',
-        description: `"${text}"`,
-        timestamp: new Date().toISOString(),
-        type: 'note'
-      });
-      this.logAudit(author, 'ADD_LEAD_NOTE', 'CRM', `Added note to lead ${id}.`);
+      const res = await apiService.updateLeadStatus(id, lead.status, text);
+      if (res?.success && res.lead) {
+        const idx = this.state.leads.findIndex((l) => l.id === id);
+        if (idx >= 0) this.state.leads[idx] = res.lead;
+      } else {
+        const author = this.getUserName();
+        const note: LeadNote = {
+          id: `note-${Date.now()}`,
+          text,
+          author,
+          timestamp: new Date().toISOString()
+        };
+        lead.notes.unshift(note);
+        lead.timeline.unshift({
+          id: `t-${Date.now()}`,
+          title: 'Note Added',
+          description: `"${text}"`,
+          timestamp: new Date().toISOString(),
+          type: 'note'
+        });
+      }
+      this.logAudit(this.getUserName(), 'ADD_LEAD_NOTE', 'CRM', `Added note to lead ${id}.`);
       this.saveToStorage();
     }
   }
