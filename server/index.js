@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 import { connectDB } from './config/db.js';
-import { authenticateToken } from './middleware/auth.js';
+import { authenticateToken, authorizeRoles } from './middleware/auth.js';
 
 // Models
 import { AdminUser } from './models/AdminUser.js';
@@ -43,7 +43,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
         callback(null, true);
       } else {
-        callback(null, true); // Permissive CORS for public endpoints
+        callback(new Error('Not allowed by CORS'));
       }
     },
     credentials: true,
@@ -51,6 +51,29 @@ app.use(
 );
 
 app.use(express.json());
+
+// In-Memory Rate Limiter Middleware (Zero-Dependency, Sliding Window)
+const createRateLimiter = ({ windowMs = 60 * 1000, maxHits = 10, message = 'Too many requests. Please try again later.' }) => {
+  const requests = new Map();
+  return (req, res, next) => {
+    const ip = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    const now = Date.now();
+    const windowStart = now - windowMs;
+
+    const userRequests = (requests.get(ip) || []).filter((time) => time > windowStart);
+    if (userRequests.length >= maxHits) {
+      return res.status(429).json({ success: false, message });
+    }
+
+    userRequests.push(now);
+    requests.set(ip, userRequests);
+    next();
+  };
+};
+
+const loginLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, maxHits: 10, message: 'Too many login attempts. Please try again in 15 minutes.' });
+const leadLimiter = createRateLimiter({ windowMs: 60 * 1000, maxHits: 5, message: 'Too many enquiry submissions. Please wait a minute before trying again.' });
+const certVerifyLimiter = createRateLimiter({ windowMs: 60 * 1000, maxHits: 20, message: 'Rate limit exceeded for certificate verification. Please wait a minute.' });
 
 // Helper for Logging Audit
 const logAudit = async (user, action, moduleName, details) => {
@@ -72,8 +95,9 @@ const logAudit = async (user, action, moduleName, details) => {
 // ----------------------------------------------------
 app.get('/health', (req, res) => {
   const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-  res.status(200).json({
-    status: 'ok',
+  const statusCode = dbStatus === 'connected' ? 200 : 503;
+  res.status(statusCode).json({
+    status: dbStatus === 'connected' ? 'ok' : 'degraded',
     database: dbStatus,
     timestamp: new Date().toISOString(),
   });
@@ -82,11 +106,17 @@ app.get('/health', (req, res) => {
 // ----------------------------------------------------
 // AUTHENTICATION APIs
 // ----------------------------------------------------
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email and password are required.' });
+    }
+
+    const secret = process.env.JWT_SECRET;
+    if (!secret || secret.length < 32) {
+      console.error('FATAL: JWT_SECRET environment variable is missing or shorter than 32 characters.');
+      return res.status(500).json({ success: false, message: 'Server security configuration error.' });
     }
 
     const user = await AdminUser.findOne({ email });
@@ -99,7 +129,6 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials.' });
     }
 
-    const secret = process.env.JWT_SECRET || 'SSCI_DEFAULT_PRODUCTION_JWT_SECRET';
     const token = jwt.sign({ id: user._id, role: user.role }, secret, { expiresIn: '24h' });
 
     await logAudit(user.name, 'LOGIN', 'Auth', `Admin user "${user.name}" logged in successfully.`);
@@ -146,7 +175,7 @@ app.get('/api/courses/:slug', async (req, res) => {
   }
 });
 
-app.post('/api/courses', authenticateToken, async (req, res) => {
+app.post('/api/courses', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
     const courseData = req.body;
     const course = await Course.findOneAndUpdate(
@@ -161,7 +190,7 @@ app.post('/api/courses', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/courses/:slug', authenticateToken, async (req, res) => {
+app.delete('/api/courses/:slug', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
     await Course.findOneAndDelete({ slug: req.params.slug });
     await logAudit(req.user.name, 'DELETE_COURSE', 'Courses', `Deleted course "${req.params.slug}".`);
@@ -183,7 +212,7 @@ app.get('/api/batches', async (req, res) => {
   }
 });
 
-app.post('/api/batches', authenticateToken, async (req, res) => {
+app.post('/api/batches', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
     const batchData = req.body;
     const batch = await Batch.findOneAndUpdate(
@@ -198,7 +227,7 @@ app.post('/api/batches', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/batches/:id', authenticateToken, async (req, res) => {
+app.delete('/api/batches/:id', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
     await Batch.findOneAndDelete({ id: req.params.id });
     await logAudit(req.user.name, 'DELETE_BATCH', 'Batches', `Deleted batch "${req.params.id}".`);
@@ -211,7 +240,7 @@ app.delete('/api/batches/:id', authenticateToken, async (req, res) => {
 // ----------------------------------------------------
 // LEADS & CRM APIs
 // ----------------------------------------------------
-app.get('/api/leads', authenticateToken, async (req, res) => {
+app.get('/api/leads', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
   try {
     const leads = await Lead.find().sort({ createdAt: -1 });
     res.json({ success: true, leads });
@@ -220,8 +249,16 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/leads', async (req, res) => {
+app.post('/api/leads', leadLimiter, async (req, res) => {
   try {
+    const { name, phone } = req.body;
+    if (!name || typeof name !== 'string' || name.trim().length < 2 || name.length > 100) {
+      return res.status(400).json({ success: false, message: 'A valid name (2 to 100 characters) is required.' });
+    }
+    if (!phone || typeof phone !== 'string' || phone.trim().length < 8 || phone.length > 20) {
+      return res.status(400).json({ success: false, message: 'A valid phone number (8 to 20 digits) is required.' });
+    }
+
     const count = await Lead.countDocuments();
     const leadId = `LEAD-${1001 + count}`;
     const newLead = await Lead.create({
@@ -246,7 +283,7 @@ app.post('/api/leads', async (req, res) => {
   }
 });
 
-app.put('/api/leads/:id/status', authenticateToken, async (req, res) => {
+app.put('/api/leads/:id/status', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
   try {
     const { status, noteText } = req.body;
     const lead = await Lead.findOne({ id: req.params.id });
@@ -280,9 +317,9 @@ app.put('/api/leads/:id/status', authenticateToken, async (req, res) => {
 // ----------------------------------------------------
 // CERTIFICATE VERIFICATION APIs
 // ----------------------------------------------------
-app.get('/api/certificates/verify/:certNumber', async (req, res) => {
+app.get('/api/certificates/verify/:certNumber', certVerifyLimiter, async (req, res) => {
   try {
-    const cert = await CertificateRecord.findOne({ certificateNumber: req.params.certNumber });
+    const cert = await CertificateRecord.findOne({ certificateNumber: req.params.certNumber.trim().toUpperCase() });
     if (!cert) {
       return res.json({
         valid: false,
@@ -304,7 +341,7 @@ app.get('/api/certificates/verify/:certNumber', async (req, res) => {
   }
 });
 
-app.get('/api/certificates', authenticateToken, async (req, res) => {
+app.get('/api/certificates', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
   try {
     const certificates = await CertificateRecord.find().sort({ createdAt: -1 });
     res.json({ success: true, certificates });
@@ -313,7 +350,7 @@ app.get('/api/certificates', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/certificates', authenticateToken, async (req, res) => {
+app.post('/api/certificates', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
   try {
     const cert = await CertificateRecord.create(req.body);
     await logAudit(req.user.name, 'ISSUE_CERTIFICATE', 'Certificates', `Issued certificate "${cert.certificateNumber}" to ${cert.studentName}.`);
@@ -335,7 +372,7 @@ app.get('/api/website/hero', async (req, res) => {
   }
 });
 
-app.put('/api/website/hero', authenticateToken, async (req, res) => {
+app.put('/api/website/hero', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
     const hero = await HeroContent.findOneAndUpdate({}, req.body, { upsert: true, new: true });
     await logAudit(req.user.name, 'UPDATE_HERO', 'Website', 'Updated homepage hero text and CTAs.');
@@ -354,7 +391,7 @@ app.get('/api/website/settings', async (req, res) => {
   }
 });
 
-app.put('/api/website/settings', authenticateToken, async (req, res) => {
+app.put('/api/website/settings', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
     const settings = await SiteSettings.findOneAndUpdate({}, req.body, { upsert: true, new: true });
     await logAudit(req.user.name, 'UPDATE_SETTINGS', 'Website', 'Updated site NAP and contact settings.');
@@ -376,7 +413,7 @@ app.get('/api/blog', async (req, res) => {
   }
 });
 
-app.post('/api/blog', authenticateToken, async (req, res) => {
+app.post('/api/blog', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
     const postData = req.body;
     const post = await BlogPost.findOneAndUpdate(
@@ -391,7 +428,7 @@ app.post('/api/blog', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/blog/:slug', authenticateToken, async (req, res) => {
+app.delete('/api/blog/:slug', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
     await BlogPost.findOneAndDelete({ slug: req.params.slug });
     await logAudit(req.user.name, 'DELETE_BLOG', 'Blog', `Deleted blog post "${req.params.slug}".`);
@@ -413,7 +450,7 @@ app.get('/api/trainers', async (req, res) => {
   }
 });
 
-app.post('/api/trainers', authenticateToken, async (req, res) => {
+app.post('/api/trainers', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
     const trainerData = req.body;
     const trainer = await Trainer.findOneAndUpdate(
@@ -428,7 +465,7 @@ app.post('/api/trainers', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/trainers/:id', authenticateToken, async (req, res) => {
+app.delete('/api/trainers/:id', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
     await Trainer.findOneAndDelete({ id: req.params.id });
     await logAudit(req.user.name, 'DELETE_TRAINER', 'Trainers', `Deleted trainer "${req.params.id}".`);
@@ -441,7 +478,7 @@ app.delete('/api/trainers/:id', authenticateToken, async (req, res) => {
 // ----------------------------------------------------
 // STUDENTS APIs
 // ----------------------------------------------------
-app.get('/api/students', authenticateToken, async (req, res) => {
+app.get('/api/students', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
   try {
     const students = await Student.find().sort({ createdAt: -1 });
     res.json({ success: true, students });
@@ -450,7 +487,7 @@ app.get('/api/students', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/students', authenticateToken, async (req, res) => {
+app.post('/api/students', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
   try {
     const studentData = req.body;
     const student = await Student.findOneAndUpdate(
@@ -477,7 +514,7 @@ app.get('/api/floating-skills', async (req, res) => {
   }
 });
 
-app.post('/api/floating-skills', authenticateToken, async (req, res) => {
+app.post('/api/floating-skills', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
     const skillData = req.body;
     const skill = await FloatingSkill.findOneAndUpdate(
@@ -492,7 +529,7 @@ app.post('/api/floating-skills', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/floating-skills/:id', authenticateToken, async (req, res) => {
+app.delete('/api/floating-skills/:id', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
     await FloatingSkill.findOneAndDelete({ id: req.params.id });
     await logAudit(req.user.name, 'DELETE_FLOATING_SKILL', 'Website', `Deleted floating skill "${req.params.id}".`);
@@ -514,7 +551,7 @@ app.get('/api/announcement', async (req, res) => {
   }
 });
 
-app.put('/api/announcement', authenticateToken, async (req, res) => {
+app.put('/api/announcement', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
     const announcement = await Announcement.findOneAndUpdate({}, req.body, { upsert: true, new: true });
     await logAudit(req.user.name, 'UPDATE_ANNOUNCEMENT', 'Website', 'Updated announcement banner.');
@@ -527,7 +564,7 @@ app.put('/api/announcement', authenticateToken, async (req, res) => {
 // ----------------------------------------------------
 // AUDIT LOGS APIs
 // ----------------------------------------------------
-app.get('/api/audit-logs', authenticateToken, async (req, res) => {
+app.get('/api/audit-logs', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN'), async (req, res) => {
   try {
     const logs = await AuditLog.find().sort({ timestamp: -1 }).limit(100);
     res.json({ success: true, logs });
@@ -536,14 +573,44 @@ app.get('/api/audit-logs', authenticateToken, async (req, res) => {
   }
 });
 
+// Global Express Error Handler Middleware (H5)
+app.use((err, req, res, next) => {
+  console.error('Unhandled Server Express Error:', err.stack || err.message || err);
+  res.status(500).json({
+    success: false,
+    message: 'An unexpected internal server error occurred.',
+  });
+});
+
+// Process Safety Net Handlers (H5)
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('⚠️  Unhandled Promise Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('💥 Uncaught Exception thrown:', err);
+});
+
 // ----------------------------------------------------
 // START SERVER & CONNECT DATABASE
 // ----------------------------------------------------
 const startServer = async () => {
-  await connectDB();
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    console.error('\n❌ FATAL ERROR: JWT_SECRET environment variable is missing or shorter than 32 characters. Server startup aborted.\n');
+    process.exit(1);
+  }
+
+  const isConnected = await connectDB();
+  if (!isConnected) {
+    console.error('\n❌ FATAL ERROR: Database connection failed during boot. Server startup aborted.\n');
+    process.exit(1);
+  }
+
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🚀 SSCI Backend Express API listening on 0.0.0.0:${PORT}\n`);
   });
 };
 
 startServer();
+

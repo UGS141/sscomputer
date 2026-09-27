@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Monitor, Users, Filter } from 'lucide-react';
 import { UPCOMING_BATCHES } from '../data/batches';
 import type { Batch } from '../data/batches';
 import { Breadcrumb } from '../components/common/Breadcrumb';
 import { SEOHead } from '../seo/SEOHead';
 import { generateBreadcrumbSchema } from '../seo/schemas';
+import { cmsStore } from '../admin/cmsStore';
+import { apiService } from '../services/api';
 
 interface BatchesPageProps {
   onOpenEnquiry: (courseTitle?: string) => void;
@@ -12,8 +14,21 @@ interface BatchesPageProps {
 
 export const BatchesPage: React.FC<BatchesPageProps> = ({ onOpenEnquiry }) => {
   const [selectedTiming, setSelectedTiming] = useState('all');
+  const [batches, setBatches] = useState<Batch[]>(() => cmsStore.getBatches() || UPCOMING_BATCHES);
 
-  const filteredBatches = UPCOMING_BATCHES.filter((batch: Batch) => {
+  useEffect(() => {
+    const unsubscribe = cmsStore.subscribe(() => {
+      setBatches(cmsStore.getBatches() || UPCOMING_BATCHES);
+    });
+    apiService.getBatches().then((res) => {
+      if (res?.success && Array.isArray(res.batches) && res.batches.length > 0) {
+        setBatches(res.batches);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  const filteredBatches = batches.filter((batch: Batch) => {
     if (selectedTiming === 'all') return true;
     return batch.timing.toLowerCase() === selectedTiming.toLowerCase();
   });

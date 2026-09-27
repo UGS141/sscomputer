@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Lock, User, LogIn, AlertCircle } from 'lucide-react';
+import React from 'react';
+import { X, Info, Phone, MapPin } from 'lucide-react';
 import { SITE_CONFIG } from '../../config/site';
 
 interface StudentLoginModalProps {
@@ -8,22 +8,7 @@ interface StudentLoginModalProps {
 }
 
 export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({ isOpen, onClose }) => {
-  const [rollNumber, setRollNumber] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-
   if (!isOpen) return null;
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!rollNumber || !password) {
-      setError('Please enter both your Roll Number / Registration ID and Password.');
-      return;
-    }
-
-    // Mock Login Demonstration
-    setError('Mock Student Portal Demo: Active student logins are enabled during lab registration. Please contact SSCI lab supervisor for your login credentials.');
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -35,7 +20,7 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({ isOpen, on
             <img src={SITE_CONFIG.logo} alt={SITE_CONFIG.name} className="h-8 w-auto bg-white p-1 rounded-md" />
             <div>
               <span className="text-xs font-bold text-teal-300 block leading-tight">SSCI Student Portal</span>
-              <h3 className="text-base font-extrabold text-white">Student Login</h3>
+              <h3 className="text-base font-extrabold text-white">Student Portal Notice</h3>
             </div>
           </div>
           <button onClick={onClose} className="p-1 rounded-full text-teal-200 hover:text-white">
@@ -43,62 +28,37 @@ export const StudentLoginModal: React.FC<StudentLoginModalProps> = ({ isOpen, on
           </button>
         </div>
 
-        <div className="p-6">
-          <form onSubmit={handleLogin} className="space-y-4">
-            {error && (
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-start gap-2 leading-relaxed">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-bold text-[#123B3A] uppercase tracking-wider mb-1">
-                Roll Number / Reg ID
-              </label>
-              <div className="relative">
-                <User className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                <input
-                  type="text"
-                  placeholder="e.g. SSCI-2026-9482"
-                  value={rollNumber}
-                  onChange={(e) => {
-                    setRollNumber(e.target.value);
-                    setError('');
-                  }}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-300 focus:border-[#087F78] focus:ring-2 focus:ring-teal-500/20 text-sm font-medium outline-none"
-                />
-              </div>
+        <div className="p-6 space-y-4">
+          <div className="p-4 rounded-xl bg-teal-50 border border-teal-200 text-[#123B3A] space-y-2">
+            <div className="flex items-center gap-2 text-[#087F78] font-bold text-sm">
+              <Info className="w-5 h-5 shrink-0" />
+              <span>Student Access Information</span>
             </div>
+            <p className="text-xs text-[#4B6B69] leading-relaxed">
+              Student enrollment credentials, course materials, and practical computer lab schedules are issued directly at SSCI Nellore. Online self-service login will be launched in an upcoming update.
+            </p>
+          </div>
 
-            <div>
-              <label className="block text-xs font-bold text-[#123B3A] uppercase tracking-wider mb-1">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setError('');
-                  }}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-300 focus:border-[#087F78] focus:ring-2 focus:ring-teal-500/20 text-sm font-medium outline-none"
-                />
-              </div>
+          <div className="space-y-2 text-xs text-gray-600 pt-2 border-t border-gray-100">
+            <div className="flex items-center gap-2 font-semibold text-[#123B3A]">
+              <Phone className="w-4 h-4 text-[#087F78]" />
+              <span>Phone: {SITE_CONFIG.contact.phonePrimary}</span>
             </div>
+            <div className="flex items-start gap-2 font-semibold text-[#123B3A]">
+              <MapPin className="w-4 h-4 text-[#F97316] shrink-0 mt-0.5" />
+              <span>{SITE_CONFIG.contact.address}</span>
+            </div>
+          </div>
 
-            <button
-              type="submit"
-              className="w-full py-3 px-4 rounded-xl text-sm font-bold text-white brand-gradient-bg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-            >
-              <LogIn className="w-4 h-4" /> Secure Portal Login
-            </button>
-          </form>
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white brand-gradient-bg shadow-md"
+          >
+            Close Notice
+          </button>
         </div>
       </div>
     </div>
   );
 };
+

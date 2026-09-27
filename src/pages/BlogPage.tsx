@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, Calendar, User, ArrowRight, Search } from 'lucide-react';
 import { BLOG_POSTS } from '../data/blog';
@@ -6,14 +6,29 @@ import type { BlogPost } from '../data/blog';
 import { Breadcrumb } from '../components/common/Breadcrumb';
 import { SEOHead } from '../seo/SEOHead';
 import { generateBreadcrumbSchema } from '../seo/schemas';
+import { cmsStore } from '../admin/cmsStore';
+import { apiService } from '../services/api';
 
 export const BlogPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [posts, setPosts] = useState<BlogPost[]>(() => cmsStore.getBlogPosts() || BLOG_POSTS);
+
+  useEffect(() => {
+    const unsubscribe = cmsStore.subscribe(() => {
+      setPosts(cmsStore.getBlogPosts() || BLOG_POSTS);
+    });
+    apiService.getBlogPosts().then((res) => {
+      if (res?.success && Array.isArray(res.posts) && res.posts.length > 0) {
+        setPosts(res.posts);
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   const categories = ['all', 'Programming', 'MS Office', 'Web Development', 'Computer Basics'];
 
-  const filteredPosts = BLOG_POSTS.filter((post: BlogPost) => {
+  const filteredPosts = posts.filter((post: BlogPost) => {
     const matchesSearch =
       post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       post.excerpt.toLowerCase().includes(searchQuery.toLowerCase());

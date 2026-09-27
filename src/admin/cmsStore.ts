@@ -329,6 +329,50 @@ class CMSStore {
 
   constructor() {
     this.loadFromStorage();
+    this.refreshFromBackend();
+  }
+
+  public async refreshFromBackend() {
+    try {
+      const [coursesRes, batchesRes, blogRes, trainersRes, heroRes, settingsRes, annRes, skillsRes] = await Promise.all([
+        apiService.getCourses(),
+        apiService.getBatches(),
+        apiService.getBlogPosts(),
+        apiService.getTrainers(),
+        apiService.getHeroContent(),
+        apiService.getSettings(),
+        apiService.getAnnouncement(),
+        apiService.getFloatingSkills(),
+      ]);
+
+      if (coursesRes?.success && Array.isArray(coursesRes.courses)) {
+        this.state.courses = coursesRes.courses;
+      }
+      if (batchesRes?.success && Array.isArray(batchesRes.batches)) {
+        this.state.batches = batchesRes.batches;
+      }
+      if (blogRes?.success && Array.isArray(blogRes.posts)) {
+        this.state.blogPosts = blogRes.posts;
+      }
+      if (trainersRes?.success && Array.isArray(trainersRes.trainers)) {
+        this.state.trainers = trainersRes.trainers;
+      }
+      if (heroRes?.success && heroRes.hero) {
+        this.state.heroContent = heroRes.hero;
+      }
+      if (settingsRes?.success && settingsRes.settings) {
+        this.state.settings = settingsRes.settings;
+      }
+      if (annRes?.success && annRes.announcement) {
+        this.state.announcement = annRes.announcement;
+      }
+      if (skillsRes?.success && Array.isArray(skillsRes.skills)) {
+        this.state.floatingSkills = skillsRes.skills;
+      }
+      this.saveToStorage();
+    } catch (e) {
+      console.warn('Failed to refresh CMS state from backend:', e);
+    }
   }
 
   private loadFromStorage() {
@@ -339,7 +383,6 @@ class CMSStore {
         this.state = {
           ...defaultInitialState,
           ...parsed,
-          // Ensure nested objects and floatingSkills fallback cleanly
           floatingSkills: defaultInitialState.floatingSkills,
           heroContent: parsed.heroContent || defaultInitialState.heroContent,
           announcement: parsed.announcement || defaultInitialState.announcement,
@@ -456,7 +499,7 @@ class CMSStore {
     return this.state.currentUser;
   }
 
-  // --- MUTATORS (WITH AUDIT LOGGING) ---
+  // --- MUTATORS (WITH AUDIT LOGGING & AWAITED API WRITES) ---
 
   // Auth
   public login(email: string, role: AdminUser['role'] = 'ADMIN'): boolean {
@@ -492,13 +535,11 @@ class CMSStore {
   }
 
   // Courses CRUD
-  public saveCourse(courseData: Partial<Course> & { slug: string; title: string }) {
+  public async saveCourse(courseData: Partial<Course> & { slug: string; title: string }) {
     let targetCourse: Course;
     const existingIndex = this.state.courses.findIndex((c) => c.slug === courseData.slug);
     if (existingIndex >= 0) {
-      this.state.courses[existingIndex] = { ...this.state.courses[existingIndex], ...courseData } as Course;
-      targetCourse = this.state.courses[existingIndex];
-      this.logAudit(this.getUserName(), 'UPDATE_COURSE', 'Courses', `Updated course details for "${courseData.title}".`);
+      targetCourse = { ...this.state.courses[existingIndex], ...courseData } as Course;
     } else {
       targetCourse = {
         slug: courseData.slug,
@@ -519,29 +560,43 @@ class CMSStore {
         projects: courseData.projects || [],
         faqs: courseData.faqs || []
       };
-      this.state.courses.unshift(targetCourse);
+    }
+
+    const res = await apiService.saveCourse(targetCourse);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to save course to database.');
+    }
+
+    const savedCourse = res.course || targetCourse;
+    if (existingIndex >= 0) {
+      this.state.courses[existingIndex] = savedCourse;
+      this.logAudit(this.getUserName(), 'UPDATE_COURSE', 'Courses', `Updated course details for "${courseData.title}".`);
+    } else {
+      this.state.courses.unshift(savedCourse);
       this.logAudit(this.getUserName(), 'CREATE_COURSE', 'Courses', `Created new course "${courseData.title}".`);
     }
     this.saveToStorage();
-    apiService.saveCourse(targetCourse).catch((e) => console.warn('API sync warning:', e));
+    return savedCourse;
   }
 
-  public deleteCourse(slug: string) {
+  public async deleteCourse(slug: string) {
+    const res = await apiService.deleteCourse(slug);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to delete course from database.');
+    }
     const course = this.getCourseBySlug(slug);
     this.state.courses = this.state.courses.filter((c) => c.slug !== slug);
     this.logAudit(this.getUserName(), 'DELETE_COURSE', 'Courses', `Deleted course "${course?.title || slug}".`);
     this.saveToStorage();
-    apiService.deleteCourse(slug).catch((e) => console.warn('API sync warning:', e));
+    return res;
   }
 
   // Batches CRUD
-  public saveBatch(batchData: Partial<Batch> & { id: string; courseName: string }) {
+  public async saveBatch(batchData: Partial<Batch> & { id: string; courseName: string }) {
     let targetBatch: Batch;
     const existingIndex = this.state.batches.findIndex((b) => b.id === batchData.id);
     if (existingIndex >= 0) {
-      this.state.batches[existingIndex] = { ...this.state.batches[existingIndex], ...batchData } as Batch;
-      targetBatch = this.state.batches[existingIndex];
-      this.logAudit(this.getUserName(), 'UPDATE_BATCH', 'Batches', `Updated batch "${batchData.id} - ${batchData.courseName}".`);
+      targetBatch = { ...this.state.batches[existingIndex], ...batchData } as Batch;
     } else {
       targetBatch = {
         id: batchData.id || `BATCH-${Date.now().toString().slice(-4)}`,
@@ -559,18 +614,34 @@ class CMSStore {
         filledSeats: batchData.filledSeats ?? 10,
         trainerName: batchData.trainerName || 'Senior SSCI Faculty'
       };
-      this.state.batches.unshift(targetBatch);
+    }
+
+    const res = await apiService.saveBatch(targetBatch);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to save batch to database.');
+    }
+
+    const savedBatch = res.batch || targetBatch;
+    if (existingIndex >= 0) {
+      this.state.batches[existingIndex] = savedBatch;
+      this.logAudit(this.getUserName(), 'UPDATE_BATCH', 'Batches', `Updated batch "${batchData.id} - ${batchData.courseName}".`);
+    } else {
+      this.state.batches.unshift(savedBatch);
       this.logAudit(this.getUserName(), 'CREATE_BATCH', 'Batches', `Created new batch for "${batchData.courseName}".`);
     }
     this.saveToStorage();
-    apiService.saveBatch(targetBatch).catch((e) => console.warn('API sync warning:', e));
+    return savedBatch;
   }
 
-  public deleteBatch(id: string) {
+  public async deleteBatch(id: string) {
+    const res = await apiService.deleteBatch(id);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to delete batch from database.');
+    }
     this.state.batches = this.state.batches.filter((b) => b.id !== id);
     this.logAudit(this.getUserName(), 'DELETE_BATCH', 'Batches', `Deleted batch "${id}".`);
     this.saveToStorage();
-    apiService.deleteBatch(id).catch((e) => console.warn('API sync warning:', e));
+    return res;
   }
 
   // Lead / Enquiry CRM
@@ -671,22 +742,23 @@ class CMSStore {
   }
 
   // Blog CMS
-  public saveBlogPost(postData: Partial<BlogPost> & { slug: string; title: string }) {
+  public async saveBlogPost(postData: Partial<BlogPost> & { slug: string; title: string }) {
     const existingIndex = this.state.blogPosts.findIndex((b) => b.slug === postData.slug);
     const contentArray = Array.isArray(postData.content) 
       ? postData.content 
       : typeof postData.content === 'string' 
         ? [postData.content] 
         : ['Article content coming soon.'];
+
+    let targetPost: BlogPost;
     if (existingIndex >= 0) {
-      this.state.blogPosts[existingIndex] = { 
+      targetPost = { 
         ...this.state.blogPosts[existingIndex], 
         ...postData,
         content: contentArray
       } as BlogPost;
-      this.logAudit(this.getUserName(), 'UPDATE_BLOG', 'Content', `Updated blog post "${postData.title}".`);
     } else {
-      const newPost: BlogPost = {
+      targetPost = {
         slug: postData.slug,
         title: postData.title,
         excerpt: postData.excerpt || 'Practical guidance and learning roadmap from SSCI Nellore.',
@@ -698,20 +770,85 @@ class CMSStore {
         category: postData.category || 'Programming',
         tags: postData.tags || ['Computer Education', 'SSCI']
       };
-      this.state.blogPosts.unshift(newPost);
+    }
+
+    const res = await apiService.saveBlogPost(targetPost);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to save blog post to database.');
+    }
+
+    const savedPost = res.post || targetPost;
+    if (existingIndex >= 0) {
+      this.state.blogPosts[existingIndex] = savedPost;
+      this.logAudit(this.getUserName(), 'UPDATE_BLOG', 'Content', `Updated blog post "${postData.title}".`);
+    } else {
+      this.state.blogPosts.unshift(savedPost);
       this.logAudit(this.getUserName(), 'CREATE_BLOG', 'Content', `Published new blog post "${postData.title}".`);
     }
     this.saveToStorage();
+    return savedPost;
   }
 
-  public deleteBlogPost(slug: string) {
+  public async deleteBlogPost(slug: string) {
+    const res = await apiService.deleteBlogPost(slug);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to delete blog post from database.');
+    }
     this.state.blogPosts = this.state.blogPosts.filter((b) => b.slug !== slug);
     this.logAudit(this.getUserName(), 'DELETE_BLOG', 'Content', `Deleted blog post "${slug}".`);
     this.saveToStorage();
+    return res;
+  }
+
+  // Trainer CMS
+  public async saveTrainer(trainerData: Partial<Trainer> & { id: string; name: string }) {
+    let targetTrainer: Trainer;
+    const existingIndex = this.state.trainers.findIndex((t) => t.id === trainerData.id);
+    if (existingIndex >= 0) {
+      targetTrainer = { ...this.state.trainers[existingIndex], ...trainerData } as Trainer;
+    } else {
+      targetTrainer = {
+        id: trainerData.id,
+        name: trainerData.name,
+        designation: trainerData.designation || 'Senior Trainer',
+        experience: trainerData.experience || '5+ Years',
+        specialization: trainerData.specialization || ['Computer Education'],
+        bio: trainerData.bio || 'Experienced trainer at Sri Shanmukha Computer Institute.',
+        avatarText: trainerData.avatarText || trainerData.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
+        gradient: trainerData.gradient || 'from-teal-600 to-emerald-600'
+      };
+    }
+
+    const res = await apiService.saveTrainer(targetTrainer);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to save trainer to database.');
+    }
+
+    const savedTrainer = res.trainer || targetTrainer;
+    if (existingIndex >= 0) {
+      this.state.trainers[existingIndex] = savedTrainer;
+      this.logAudit(this.getUserName(), 'UPDATE_TRAINER', 'Trainers', `Updated trainer "${trainerData.name}".`);
+    } else {
+      this.state.trainers.unshift(savedTrainer);
+      this.logAudit(this.getUserName(), 'CREATE_TRAINER', 'Trainers', `Added new trainer "${trainerData.name}".`);
+    }
+    this.saveToStorage();
+    return savedTrainer;
+  }
+
+  public async deleteTrainer(id: string) {
+    const res = await apiService.deleteTrainer(id);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to delete trainer from database.');
+    }
+    this.state.trainers = this.state.trainers.filter((t) => t.id !== id);
+    this.logAudit(this.getUserName(), 'DELETE_TRAINER', 'Trainers', `Deleted trainer "${id}".`);
+    this.saveToStorage();
+    return res;
   }
 
   // Certificate Issuer & Verifier
-  public issueCertificate(data: { studentName: string; courseName: string; issueDate?: string; grade?: string }): CertificateRecord {
+  public async issueCertificate(data: { studentName: string; courseName: string; issueDate?: string; grade?: string }): Promise<CertificateRecord> {
     const count = (this.state.certificates.length + 1025).toString();
     const certNum = `SSCI-2026-${count}`;
     const newCert: CertificateRecord = {
@@ -725,10 +862,16 @@ class CMSStore {
       status: 'Valid'
     };
 
-    this.state.certificates.unshift(newCert);
+    const res = await apiService.issueCertificate(newCert);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to issue certificate on database.');
+    }
+
+    const savedCert = res.certificate || newCert;
+    this.state.certificates.unshift(savedCert);
     this.logAudit(this.getUserName(), 'ISSUE_CERTIFICATE', 'Certificates', `Issued certificate ${certNum} to ${data.studentName}.`);
     this.saveToStorage();
-    return newCert;
+    return savedCert;
   }
 
   public revokeCertificate(certNumber: string) {
@@ -760,35 +903,67 @@ class CMSStore {
   }
 
   // Hero & Floating Tech CMS
-  public updateHeroContent(data: Partial<HeroContent>) {
-    this.state.heroContent = { ...this.state.heroContent, ...data };
+  public async updateHeroContent(data: Partial<HeroContent>) {
+    const res = await apiService.updateHeroContent(data);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to update hero content on database.');
+    }
+    this.state.heroContent = res.hero || { ...this.state.heroContent, ...data };
     this.logAudit(this.getUserName(), 'UPDATE_HERO', 'Website', 'Updated homepage hero section text & CTAs.');
     this.saveToStorage();
+    return res;
   }
 
-  public saveFloatingSkill(skill: FloatingSkill) {
+  public async saveFloatingSkill(skill: FloatingSkill) {
+    const res = await apiService.saveFloatingSkill(skill);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to save floating skill to database.');
+    }
+    const savedSkill = res.skill || skill;
     const idx = this.state.floatingSkills.findIndex((s) => s.id === skill.id);
     if (idx >= 0) {
-      this.state.floatingSkills[idx] = skill;
+      this.state.floatingSkills[idx] = savedSkill;
       this.logAudit(this.getUserName(), 'UPDATE_FLOATING_SKILL', 'Website', `Updated floating technology chip "${skill.name}".`);
     } else {
-      this.state.floatingSkills.push(skill);
+      this.state.floatingSkills.push(savedSkill);
       this.logAudit(this.getUserName(), 'CREATE_FLOATING_SKILL', 'Website', `Added new floating technology chip "${skill.name}".`);
     }
     this.saveToStorage();
+    return savedSkill;
   }
 
-  public deleteFloatingSkill(id: string) {
+  public async deleteFloatingSkill(id: string) {
+    const res = await apiService.deleteFloatingSkill(id);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to delete floating skill from database.');
+    }
     this.state.floatingSkills = this.state.floatingSkills.filter((s) => s.id !== id);
     this.logAudit(this.getUserName(), 'DELETE_FLOATING_SKILL', 'Website', `Removed floating skill chip "${id}".`);
     this.saveToStorage();
+    return res;
   }
 
   // Site Settings CMS
-  public updateSettings(data: Partial<SiteSettings>) {
-    this.state.settings = { ...this.state.settings, ...data };
+  public async updateSettings(data: Partial<SiteSettings>) {
+    const res = await apiService.updateSettings(data);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to update site settings on database.');
+    }
+    this.state.settings = res.settings || { ...this.state.settings, ...data };
     this.logAudit(this.getUserName(), 'UPDATE_SETTINGS', 'System', 'Updated institute NAP & centralized contact settings.');
     this.saveToStorage();
+    return res;
+  }
+
+  public async updateAnnouncement(data: Partial<Announcement>) {
+    const res = await apiService.updateAnnouncement(data);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to update announcement banner on database.');
+    }
+    this.state.announcement = res.announcement || { ...this.state.announcement, ...data };
+    this.logAudit(this.getUserName(), 'UPDATE_ANNOUNCEMENT', 'Website', 'Updated announcement banner.');
+    this.saveToStorage();
+    return res;
   }
 
   // Audit Logs
@@ -802,7 +977,6 @@ class CMSStore {
       timestamp: new Date().toISOString()
     };
     this.state.auditLogs.unshift(log);
-    // Keep max 200 logs in memory
     if (this.state.auditLogs.length > 200) {
       this.state.auditLogs = this.state.auditLogs.slice(0, 200);
     }
@@ -814,3 +988,4 @@ class CMSStore {
 }
 
 export const cmsStore = new CMSStore();
+

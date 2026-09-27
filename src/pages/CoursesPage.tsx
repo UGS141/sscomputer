@@ -8,6 +8,8 @@ import { Breadcrumb } from '../components/common/Breadcrumb';
 import { SEOHead } from '../seo/SEOHead';
 import { generateBreadcrumbSchema } from '../seo/schemas';
 import { SEO_CONFIG } from '../seo/config';
+import { cmsStore } from '../admin/cmsStore';
+import { apiService } from '../services/api';
 
 interface CoursesPageProps {
   onOpenEnquiry: (courseTitle?: string) => void;
@@ -29,13 +31,27 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ onOpenEnquiry }) => {
   const [selectedLevel, setSelectedLevel] = useState('all');
   const [selectedDuration, setSelectedDuration] = useState('all');
 
+  const [courses, setCourses] = useState<Course[]>(() => cmsStore.getCourses() || COURSES_DATA);
+
   useEffect(() => {
     const cat = searchParams.get('category');
     if (cat) setSelectedCategory(cat);
   }, [searchParams]);
 
+  useEffect(() => {
+    const unsubscribe = cmsStore.subscribe(() => {
+      setCourses(cmsStore.getCourses() || COURSES_DATA);
+    });
+    apiService.getCourses().then((res) => {
+      if (res?.success && Array.isArray(res.courses) && res.courses.length > 0) {
+        setCourses(res.courses);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   const filteredCourses = useMemo(() => {
-    return COURSES_DATA.filter((course: Course) => {
+    return courses.filter((course: Course) => {
       // Search term filter
       const matchesSearch =
         course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -56,7 +72,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ onOpenEnquiry }) => {
 
       return matchesSearch && matchesCategory && matchesLevel && matchesDuration;
     });
-  }, [searchQuery, selectedCategory, selectedLevel, selectedDuration]);
+  }, [courses, searchQuery, selectedCategory, selectedLevel, selectedDuration]);
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -133,7 +149,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ onOpenEnquiry }) => {
                     : 'bg-gray-100 text-gray-700 hover:bg-teal-50 hover:text-[#087F78]'
                 }`}
               >
-                All Courses ({COURSES_DATA.length})
+                All Courses ({courses.length})
               </button>
 
               {COURSE_CATEGORIES.map((cat) => {

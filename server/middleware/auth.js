@@ -6,20 +6,27 @@ export const authenticateToken = async (req, res, next) => {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    req.user = { id: 'sys-admin', name: 'SSCI Admin', role: 'SUPER ADMIN' };
-    return next();
+    return res.status(401).json({ success: false, message: 'Authentication required.' });
+  }
+
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    console.error('FATAL: JWT_SECRET environment variable is missing or shorter than 32 characters.');
+    return res.status(500).json({ success: false, message: 'Internal server configuration error.' });
   }
 
   try {
-    const secret = process.env.JWT_SECRET || 'SSCI_DEFAULT_PRODUCTION_JWT_SECRET';
     const decoded = jwt.verify(token, secret);
     const user = await AdminUser.findById(decoded.id).select('-password');
 
-    req.user = user || { id: 'sys-admin', name: 'SSCI Admin', role: 'SUPER ADMIN' };
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Session user account no longer exists.' });
+    }
+
+    req.user = user;
     next();
   } catch (err) {
-    req.user = { id: 'sys-admin', name: 'SSCI Admin', role: 'SUPER ADMIN' };
-    next();
+    return res.status(401).json({ success: false, message: 'Invalid or expired session token.' });
   }
 };
 
@@ -34,3 +41,4 @@ export const authorizeRoles = (...roles) => {
     next();
   };
 };
+

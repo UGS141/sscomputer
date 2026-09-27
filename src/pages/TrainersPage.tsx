@@ -1,15 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FACULTY_TRAINERS } from '../data/trainers';
 import type { Trainer } from '../data/trainers';
 import { Breadcrumb } from '../components/common/Breadcrumb';
 import { SEOHead } from '../seo/SEOHead';
 import { generateBreadcrumbSchema } from '../seo/schemas';
+import { cmsStore } from '../admin/cmsStore';
+import { apiService } from '../services/api';
 
 interface TrainersPageProps {
   onOpenEnquiry: (courseTitle?: string) => void;
 }
 
 export const TrainersPage: React.FC<TrainersPageProps> = ({ onOpenEnquiry }) => {
+  const [trainers, setTrainers] = useState<Trainer[]>(() => cmsStore.getTrainers() || FACULTY_TRAINERS);
+
+  useEffect(() => {
+    const unsubscribe = cmsStore.subscribe(() => {
+      setTrainers(cmsStore.getTrainers() || FACULTY_TRAINERS);
+    });
+    apiService.getTrainers().then((res) => {
+      if (res?.success && Array.isArray(res.trainers) && res.trainers.length > 0) {
+        setTrainers(res.trainers);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   const schemas = [
     generateBreadcrumbSchema([
       { name: 'Home', url: '/' },
@@ -41,7 +57,7 @@ export const TrainersPage: React.FC<TrainersPageProps> = ({ onOpenEnquiry }) => 
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {FACULTY_TRAINERS.map((trainer: Trainer) => (
+          {trainers.map((trainer: Trainer) => (
             <div key={trainer.id} className="bg-white rounded-2xl p-6 border border-teal-100 shadow-sm hover:shadow-xl transition-all duration-300 text-center space-y-4 flex flex-col justify-between">
               <div>
                 <div className={`w-20 h-20 rounded-full bg-gradient-to-tr ${trainer.gradient} text-white font-extrabold text-2xl flex items-center justify-center mx-auto shadow-lg mb-3`}>

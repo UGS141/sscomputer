@@ -1,4 +1,4 @@
-import { cmsStore } from '../admin/cmsStore';
+import { SITE_CONFIG } from '../config/site';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -43,57 +43,75 @@ export const apiService = {
 
       return await res.json();
     } catch (err) {
-      console.warn(`API request to ${endpoint} failed, falling back to local store:`, err);
+      console.warn(`API request to ${endpoint} failed:`, err);
       return null;
     }
   },
 
-  // Submit Enquiry
+  // Submit Enquiry (Genuine Backend Call — No Fake Success)
   submitEnquiry: async (payload: EnquiryPayload): Promise<{ success: boolean; message: string }> => {
     const data = await apiService.request('/api/leads', 'POST', { ...payload, source: 'Website' });
     if (data?.success) {
       return { success: true, message: data.message || 'Enquiry submitted successfully.' };
     }
-
-    // Local Fallback
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        cmsStore.addLead({
-          name: payload.name,
-          phone: payload.phone,
-          email: payload.email,
-          courseInterested: payload.courseInterested,
-          preferredBatch: payload.preferredBatch,
-          message: payload.message,
-          source: 'Website',
-        });
-        resolve({
-          success: true,
-          message: 'Thank you! Our admission counselor at Sri Shanmukha Computer Institute will contact you shortly.',
-        });
-      }, 300);
-    });
+    return {
+      success: false,
+      message: data?.message || `We could not submit your enquiry right now. Please try again or call us directly at ${SITE_CONFIG.contact.phonePrimary}.`,
+    };
   },
 
-  // Verify Certificate
+  // Verify Certificate (Genuine Backend Call — No Local Fallback)
   verifyCertificate: async (certNumber: string): Promise<VerificationResult> => {
     const data = await apiService.request(`/api/certificates/verify/${encodeURIComponent(certNumber)}`);
     if (data) return data;
+    return {
+      valid: false,
+      errorMessage: 'Verification service is temporarily unavailable. Please check your network connection or contact administration.',
+    };
+  },
 
-    // Local Fallback
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const result = cmsStore.verifyCertificate(certNumber);
-        if (result) {
-          resolve(result);
-        } else {
-          resolve({
-            valid: false,
-            errorMessage: `No record found for Certificate No: "${certNumber}". Please check the ID printed on your official SSCI certificate or contact administration.`,
-          });
-        }
-      }, 300);
-    });
+  // GET Public Content Endpoints (C4)
+  getCourses: async () => {
+    return await apiService.request('/api/courses');
+  },
+  getCourseBySlug: async (slug: string) => {
+    return await apiService.request(`/api/courses/${slug}`);
+  },
+  getBatches: async () => {
+    return await apiService.request('/api/batches');
+  },
+  getBlogPosts: async () => {
+    return await apiService.request('/api/blog');
+  },
+  getBlogPostBySlug: async (slug: string) => {
+    return await apiService.request(`/api/blog/${slug}`);
+  },
+  getTrainers: async () => {
+    return await apiService.request('/api/trainers');
+  },
+  getFloatingSkills: async () => {
+    return await apiService.request('/api/floating-skills');
+  },
+  getHeroContent: async () => {
+    return await apiService.request('/api/website/hero');
+  },
+  getSettings: async () => {
+    return await apiService.request('/api/website/settings');
+  },
+  getAnnouncement: async () => {
+    return await apiService.request('/api/announcement');
+  },
+  getLeads: async () => {
+    return await apiService.request('/api/leads');
+  },
+  getCertificates: async () => {
+    return await apiService.request('/api/certificates');
+  },
+  getStudents: async () => {
+    return await apiService.request('/api/students');
+  },
+  getAuditLogs: async () => {
+    return await apiService.request('/api/audit-logs');
   },
 
   // Courses API
@@ -157,3 +175,4 @@ export const apiService = {
     return await apiService.request('/api/certificates', 'POST', certData);
   },
 };
+
