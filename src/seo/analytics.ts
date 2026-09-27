@@ -13,6 +13,7 @@ export type SEOEventType =
   | 'course_enquiry'
   | 'contact_form_submit'
   | 'certificate_verification'
+  | 'social_click'
   | 'blog_view';
 
 export const trackSEOEvent = (eventName: SEOEventType, data?: Record<string, any>) => {

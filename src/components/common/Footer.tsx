@@ -220,13 +220,14 @@ export const Footer: React.FC = () => {
         {/* Bottom copyright */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-teal-200/70 gap-3">
           <p>© 2026 Sri Shanmukha Computer Institute (SSCI). All rights reserved.</p>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             <Link to="/verify-certificate" className="hover:text-white transition-colors">
               Certificate Portal
             </Link>
             <Link to="/contact" className="hover:text-white transition-colors">
               Campus Address
             </Link>
+            <span className="text-teal-300/80 font-medium">Developed by UGS IT Solutions</span>
           </div>
         </div>
       </div>

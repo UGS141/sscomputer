@@ -8,6 +8,8 @@ import { Footer } from './components/common/Footer';
 import { EnquiryModal } from './components/common/EnquiryModal';
 import { StudentLoginModal } from './components/common/StudentLoginModal';
 import { WhatsAppButton } from './components/common/WhatsAppButton';
+import { ReturnToTop } from './components/common/ReturnToTop';
+import { InstagramFloat } from './components/common/InstagramFloat';
 import { ScrollToTop } from './components/common/ScrollToTop';
 
 // Pages
@@ -135,8 +137,10 @@ export const App: React.FC = () => {
               {/* Global Footer */}
               <Footer />
 
-              {/* Floating WhatsApp Quick Action */}
+              {/* Global Floating UI Controls */}
+              <InstagramFloat />
               <WhatsAppButton />
+              <ReturnToTop />
 
               {/* Modals */}
               <EnquiryModal

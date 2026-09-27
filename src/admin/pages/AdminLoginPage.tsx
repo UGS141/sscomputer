@@ -45,11 +45,20 @@ export const AdminLoginPage: React.FC = () => {
       <div className="max-w-md w-full bg-white/95 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20 relative z-10 space-y-6">
         {/* Header Branding */}
         <div className="text-center space-y-3">
-          <img src="/ssci-logo.png" alt="SSCI Logo" className="h-14 mx-auto object-contain bg-white p-2 rounded-2xl shadow-md" />
-          <div>
-            <h1 className="text-2xl font-extrabold text-[#123B3A]">Admin Workspace Login</h1>
-            <p className="text-xs font-medium text-[#087F78] mt-1">Sri Shanmukha Computer Institute CMS & CRM</p>
+          {/* UGS Product Logo */}
+          <div className="inline-flex items-center justify-center bg-white p-2.5 rounded-2xl shadow-sm border border-gray-100 max-w-[230px]">
+            <img src="/ugs-logo.png" alt="UGS IT Solutions Logo" className="h-10 w-auto object-contain" />
           </div>
+
+          <div className="space-y-1">
+            <div className="inline-block px-2.5 py-0.5 rounded-full bg-teal-50 border border-teal-200/60 text-[10px] font-extrabold text-[#087F78] uppercase tracking-widest">
+              UGS ADMIN SUITE
+            </div>
+            <h1 className="text-2xl font-extrabold text-[#123B3A] tracking-tight">Admin Workspace Login</h1>
+            <p className="text-xs font-semibold text-gray-500">Sri Shanmukha Computer Institute Administration Portal</p>
+          </div>
+
+          <div className="w-16 h-0.5 bg-gradient-to-r from-transparent via-teal-200 to-transparent mx-auto pt-1" />
         </div>
 
         {error && (
@@ -123,9 +132,12 @@ export const AdminLoginPage: React.FC = () => {
           </button>
         </form>
 
-        <div className="pt-4 border-t border-gray-100 text-center text-[11px] text-gray-500 flex items-center justify-center gap-2">
-          <CheckCircle2 className="w-3.5 h-3.5 text-[#12A77A]" />
-          <span>Protected SSCI Administrative Portal</span>
+        <div className="pt-4 border-t border-gray-100 text-center space-y-1">
+          <div className="text-[11px] text-gray-600 font-semibold flex items-center justify-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#12A77A]" />
+            <span>Protected SSCI Administrative Portal</span>
+          </div>
+          <p className="text-[10px] font-medium text-gray-400">A product by UGS IT Solutions</p>
         </div>
       </div>
     </div>
