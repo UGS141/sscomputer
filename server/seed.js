@@ -24,6 +24,12 @@ dotenv.config();
 const seedDatabase = async () => {
   console.log('🚀 Initializing MongoDB Atlas Seed Process...');
 
+  const mongoURI = process.env.MONGODB_URI;
+  if (!mongoURI || mongoURI.includes('YOUR_DATABASE_PASSWORD') || mongoURI.includes('<db_password>') || mongoURI.includes('<password>')) {
+    console.error('\n❌ ACTION REQUIRED: Open the .env file in VS Code and replace YOUR_DATABASE_PASSWORD with your real MongoDB Atlas password.\n');
+    process.exit(1);
+  }
+
   const connected = await connectDB();
   if (!connected) {
     console.error('Seed aborted due to database connection failure.');
