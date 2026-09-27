@@ -8,6 +8,7 @@ import { GLOBAL_FAQS, type FAQItem } from '../data/faqs';
 import { LEARNING_PATHS, type LearningPath } from '../data/learningPaths';
 import { FLOATING_SKILLS, type FloatingSkill } from '../components/home/FloatingTechnologies';
 import { SITE_CONFIG } from '../config/site';
+import { apiService } from '../services/api';
 
 export type { Course, Batch, BlogPost, Trainer, Testimonial, StudentProject, FAQItem, LearningPath, FloatingSkill };
 
@@ -492,12 +493,14 @@ class CMSStore {
 
   // Courses CRUD
   public saveCourse(courseData: Partial<Course> & { slug: string; title: string }) {
+    let targetCourse: Course;
     const existingIndex = this.state.courses.findIndex((c) => c.slug === courseData.slug);
     if (existingIndex >= 0) {
       this.state.courses[existingIndex] = { ...this.state.courses[existingIndex], ...courseData } as Course;
+      targetCourse = this.state.courses[existingIndex];
       this.logAudit(this.getUserName(), 'UPDATE_COURSE', 'Courses', `Updated course details for "${courseData.title}".`);
     } else {
-      const newCourse: Course = {
+      targetCourse = {
         slug: courseData.slug,
         title: courseData.title,
         categoryId: courseData.categoryId || 'computer-essentials',
@@ -516,10 +519,11 @@ class CMSStore {
         projects: courseData.projects || [],
         faqs: courseData.faqs || []
       };
-      this.state.courses.unshift(newCourse);
+      this.state.courses.unshift(targetCourse);
       this.logAudit(this.getUserName(), 'CREATE_COURSE', 'Courses', `Created new course "${courseData.title}".`);
     }
     this.saveToStorage();
+    apiService.saveCourse(targetCourse).catch((e) => console.warn('API sync warning:', e));
   }
 
   public deleteCourse(slug: string) {
@@ -527,16 +531,19 @@ class CMSStore {
     this.state.courses = this.state.courses.filter((c) => c.slug !== slug);
     this.logAudit(this.getUserName(), 'DELETE_COURSE', 'Courses', `Deleted course "${course?.title || slug}".`);
     this.saveToStorage();
+    apiService.deleteCourse(slug).catch((e) => console.warn('API sync warning:', e));
   }
 
   // Batches CRUD
   public saveBatch(batchData: Partial<Batch> & { id: string; courseName: string }) {
+    let targetBatch: Batch;
     const existingIndex = this.state.batches.findIndex((b) => b.id === batchData.id);
     if (existingIndex >= 0) {
       this.state.batches[existingIndex] = { ...this.state.batches[existingIndex], ...batchData } as Batch;
+      targetBatch = this.state.batches[existingIndex];
       this.logAudit(this.getUserName(), 'UPDATE_BATCH', 'Batches', `Updated batch "${batchData.id} - ${batchData.courseName}".`);
     } else {
-      const newBatch: Batch = {
+      targetBatch = {
         id: batchData.id || `BATCH-${Date.now().toString().slice(-4)}`,
         courseSlug: batchData.courseSlug || 'python-programming',
         courseName: batchData.courseName,
@@ -552,16 +559,18 @@ class CMSStore {
         filledSeats: batchData.filledSeats ?? 10,
         trainerName: batchData.trainerName || 'Senior SSCI Faculty'
       };
-      this.state.batches.unshift(newBatch);
+      this.state.batches.unshift(targetBatch);
       this.logAudit(this.getUserName(), 'CREATE_BATCH', 'Batches', `Created new batch for "${batchData.courseName}".`);
     }
     this.saveToStorage();
+    apiService.saveBatch(targetBatch).catch((e) => console.warn('API sync warning:', e));
   }
 
   public deleteBatch(id: string) {
     this.state.batches = this.state.batches.filter((b) => b.id !== id);
     this.logAudit(this.getUserName(), 'DELETE_BATCH', 'Batches', `Deleted batch "${id}".`);
     this.saveToStorage();
+    apiService.deleteBatch(id).catch((e) => console.warn('API sync warning:', e));
   }
 
   // Lead / Enquiry CRM

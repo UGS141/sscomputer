@@ -41,7 +41,7 @@ async function runComprehensiveCrudTest() {
     // 1. Connect DB
     let isConnected = false;
     try {
-      await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 3000 });
+      await mongoose.connect(MONGODB_URI, { dbName: 'ssci', serverSelectionTimeoutMS: 3000 });
       isConnected = true;
     } catch (e) {
       console.log('⚠️ MongoDB Atlas remote not configured or timed out, skipping database live connection test.');
