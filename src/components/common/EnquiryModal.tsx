@@ -4,8 +4,8 @@ import { COURSES_DATA } from '../../data/courses';
 import { apiService } from '../../services/api';
 import { generateWhatsAppUrl } from '../../config/site';
 import { trackSEOEvent } from '../../seo/analytics';
-
 import { cmsStore } from '../../admin/cmsStore';
+import { SuccessConfetti } from './SuccessConfetti';
 
 interface EnquiryModalProps {
   isOpen: boolean;
@@ -25,6 +25,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
       if (res.success) {
         trackSEOEvent('course_enquiry', { course: formData.courseInterested });
         cmsStore.refreshFromBackend();
+        setShowCelebration(true);
         setSubmitted(true);
       } else {
         setErrorMsg(res.message || 'We could not submit your enquiry right now. Please check your information and try again.');
@@ -63,6 +65,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
 
   const handleResetAndClose = () => {
     setSubmitted(false);
+    setShowCelebration(false);
     setErrorMsg('');
     setFormData({
       name: '',
@@ -81,6 +84,9 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={handleResetAndClose} />
+
+      {/* Confetti Animation Triggered ONLY After Confirmed Backend Persistence */}
+      {showCelebration && <SuccessConfetti onComplete={() => setShowCelebration(false)} />}
 
       {/* Modal Dialog */}
       <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200 border border-teal-100">
@@ -105,14 +111,17 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
         <div className="p-6">
           {submitted ? (
             <div className="text-center py-6 space-y-4">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#12A77A] flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#12A77A] flex items-center justify-center mx-auto shadow-inner">
                 <CheckCircle2 className="w-10 h-10" />
               </div>
 
               <div>
-                <h4 className="text-2xl font-bold text-[#123B3A]">Enquiry Received!</h4>
-                <p className="text-sm text-gray-600 mt-1 max-w-xs mx-auto">
-                  Thank you, <span className="font-semibold text-[#087F78]">{formData.name}</span>! Our admission team will contact you shortly with course schedules and fee details.
+                <span className="inline-block px-3 py-1 rounded-full bg-emerald-50 text-[#087F78] text-xs font-bold mb-2 border border-emerald-200">
+                  🎉 Thank you for choosing SSCI!
+                </span>
+                <h4 className="text-2xl font-extrabold text-[#123B3A]">Enquiry Submitted Successfully!</h4>
+                <p className="text-sm text-gray-600 mt-2 max-w-xs mx-auto leading-relaxed">
+                  Thank you for reaching out to SSCI, <span className="font-semibold text-[#087F78]">{formData.name}</span>. Our team will get in touch with you soon.
                 </p>
               </div>
 

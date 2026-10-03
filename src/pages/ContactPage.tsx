@@ -9,6 +9,7 @@ import { generateLocalBusinessSchema, generateBreadcrumbSchema } from '../seo/sc
 import { trackSEOEvent } from '../seo/analytics';
 
 import { cmsStore } from '../admin/cmsStore';
+import { SuccessConfetti } from '../components/common/SuccessConfetti';
 
 export const ContactPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -22,6 +23,7 @@ export const ContactPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,6 +37,7 @@ export const ContactPage: React.FC = () => {
       if (res.success) {
         trackSEOEvent('contact_form_submit', { course: formData.courseInterested });
         cmsStore.refreshFromBackend();
+        setShowCelebration(true);
         setSubmitted(true);
       } else {
         setErrorMsg(res.message || 'Submission failed. Please check your details and try again.');
@@ -181,6 +184,7 @@ export const ContactPage: React.FC = () => {
 
           {/* Right: Contact Form */}
           <div className="lg:col-span-7">
+            {showCelebration && <SuccessConfetti onComplete={() => setShowCelebration(false)} />}
             <div className="bg-white p-6 sm:p-10 rounded-3xl border border-teal-100 shadow-xl space-y-6">
               <div>
                 <span className="text-xs font-bold text-[#087F78] uppercase tracking-wider block mb-1">
@@ -191,16 +195,24 @@ export const ContactPage: React.FC = () => {
 
               {submitted ? (
                 <div className="text-center py-10 space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#12A77A] flex items-center justify-center mx-auto">
+                  <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#12A77A] flex items-center justify-center mx-auto shadow-inner">
                     <CheckCircle2 className="w-10 h-10" />
                   </div>
-                  <h4 className="text-2xl font-bold text-[#123B3A]">Thank You!</h4>
-                  <p className="text-xs sm:text-sm text-[#4B6B69] max-w-sm mx-auto">
-                    Your enquiry has been received. Our admission counselor will reach out to you shortly.
-                  </p>
+                  <div>
+                    <span className="inline-block px-3 py-1 rounded-full bg-emerald-50 text-[#087F78] text-xs font-bold mb-2 border border-emerald-200">
+                      🎉 Thank you for choosing SSCI!
+                    </span>
+                    <h4 className="text-2xl font-extrabold text-[#123B3A]">Enquiry Submitted Successfully!</h4>
+                    <p className="text-xs sm:text-sm text-[#4B6B69] max-w-sm mx-auto mt-2 leading-relaxed">
+                      Thank you for reaching out to SSCI. Our team will get in touch with you soon.
+                    </p>
+                  </div>
                   <button
-                    onClick={() => setSubmitted(false)}
-                    className="py-2.5 px-6 rounded-xl text-xs font-bold text-white brand-gradient-bg"
+                    onClick={() => {
+                      setSubmitted(false);
+                      setShowCelebration(false);
+                    }}
+                    className="py-2.5 px-6 rounded-xl text-xs font-bold text-white brand-gradient-bg shadow-md hover:shadow-lg transition-all"
                   >
                     Send Another Enquiry
                   </button>
