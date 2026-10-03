@@ -33,6 +33,7 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   'https://sscomputerinstitute.com',
   'https://www.sscomputerinstitute.com',
+  'https://sscomputer.vercel.app',
   'http://localhost:5173',
   'http://localhost:3000',
 ].filter(Boolean);
@@ -40,7 +41,12 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        (typeof origin === 'string' && origin.endsWith('.vercel.app')) ||
+        process.env.NODE_ENV !== 'production'
+      ) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -72,7 +78,7 @@ const createRateLimiter = ({ windowMs = 60 * 1000, maxHits = 10, message = 'Too 
 };
 
 const loginLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, maxHits: 10, message: 'Too many login attempts. Please try again in 15 minutes.' });
-const leadLimiter = createRateLimiter({ windowMs: 60 * 1000, maxHits: 5, message: 'Too many enquiry submissions. Please wait a minute before trying again.' });
+const leadLimiter = createRateLimiter({ windowMs: 60 * 1000, maxHits: 15, message: 'Too many enquiry submissions. Please wait a minute before trying again.' });
 const certVerifyLimiter = createRateLimiter({ windowMs: 60 * 1000, maxHits: 20, message: 'Rate limit exceeded for certificate verification. Please wait a minute.' });
 
 // Helper for Logging Audit
@@ -259,8 +265,19 @@ app.post('/api/leads', leadLimiter, async (req, res) => {
       return res.status(400).json({ success: false, message: 'A valid phone number (8 to 20 digits) is required.' });
     }
 
+    const latestLead = await Lead.findOne().sort({ createdAt: -1 });
+    let nextNumber = 1001;
+    if (latestLead && latestLead.id && latestLead.id.startsWith('LEAD-')) {
+      const parsed = parseInt(latestLead.id.replace('LEAD-', ''), 10);
+      if (!isNaN(parsed)) {
+        nextNumber = parsed + 1;
+      }
+    }
     const count = await Lead.countDocuments();
-    const leadId = `LEAD-${1001 + count}`;
+    if (nextNumber <= 1000 + count) {
+      nextNumber = 1001 + count;
+    }
+    const leadId = `LEAD-${nextNumber}`;
     const newLead = await Lead.create({
       id: leadId,
       ...req.body,
