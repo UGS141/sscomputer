@@ -7,10 +7,12 @@ import { MobileMenu } from './components/common/MobileMenu';
 import { Footer } from './components/common/Footer';
 import { EnquiryModal } from './components/common/EnquiryModal';
 import { StudentLoginModal } from './components/common/StudentLoginModal';
+import { LaunchOfferModal } from './components/common/LaunchOfferModal';
 import { WhatsAppButton } from './components/common/WhatsAppButton';
 import { ReturnToTop } from './components/common/ReturnToTop';
 import { InstagramFloat } from './components/common/InstagramFloat';
 import { ScrollToTop } from './components/common/ScrollToTop';
+import { LAUNCH_OFFER_CONFIG } from './config/launchOffer';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -51,11 +53,36 @@ export const App: React.FC = () => {
   const [isEnquiryOpen, setIsEnquiryOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLaunchOfferOpen, setIsLaunchOfferOpen] = useState(false);
   const [selectedCourseForEnquiry, setSelectedCourseForEnquiry] = useState<string | undefined>(undefined);
 
   const handleOpenEnquiry = (courseTitle?: string) => {
     setSelectedCourseForEnquiry(courseTitle);
     setIsEnquiryOpen(true);
+  };
+
+  React.useEffect(() => {
+    if (!LAUNCH_OFFER_CONFIG.enabled) return;
+
+    // Verify fixed campaign timestamp hasn't expired
+    const isCampaignActive = new Date().getTime() < new Date(LAUNCH_OFFER_CONFIG.expiresAt).getTime();
+    if (!isCampaignActive) return;
+
+    // Check session dismissal state
+    const isDismissed = sessionStorage.getItem('ssci_launch_offer_dismissed') === 'true';
+    if (isDismissed) return;
+
+    // Trigger popup after 800ms delay on initial visit
+    const timer = setTimeout(() => {
+      setIsLaunchOfferOpen(true);
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleCloseLaunchOffer = () => {
+    setIsLaunchOfferOpen(false);
+    sessionStorage.setItem('ssci_launch_offer_dismissed', 'true');
   };
 
   return (
@@ -143,6 +170,15 @@ export const App: React.FC = () => {
               <ReturnToTop />
 
               {/* Modals */}
+              <LaunchOfferModal
+                isOpen={isLaunchOfferOpen}
+                onClose={handleCloseLaunchOffer}
+                onRegisterNow={(courseTitle) => {
+                  handleCloseLaunchOffer();
+                  handleOpenEnquiry(courseTitle);
+                }}
+              />
+
               <EnquiryModal
                 isOpen={isEnquiryOpen}
                 onClose={() => setIsEnquiryOpen(false)}
