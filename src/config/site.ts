@@ -21,7 +21,7 @@ export const SITE_CONFIG = {
   },
   
   social: {
-    instagram: 'https://instagram.com/ssci_official',
+    instagram: 'https://www.instagram.com/sscomputerinstitutenlr?srtk=MWsyaHcycjJqYmt2dQ==',
     facebook: 'https://facebook.com/ssci.official',
     youtube: 'https://youtube.com/ssci_edu',
     linkedin: 'https://linkedin.com/company/ssci-institute',

@@ -41,6 +41,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
 
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(cmsStore.getCurrentUser());
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -54,6 +55,34 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   // Profile Popover
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  // Strict Authentication Check on Mount, Route Change, and Browser Back/Forward (popstate)
+  useEffect(() => {
+    let isMounted = true;
+    const verify = async () => {
+      const isValid = await cmsStore.verifySession();
+      if (isMounted) {
+        if (!isValid) {
+          navigate('/admin/login', { replace: true });
+        } else {
+          setCurrentUser(cmsStore.getCurrentUser());
+          setIsAuthChecking(false);
+        }
+      }
+    };
+
+    verify();
+
+    const handlePopState = () => {
+      verify();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [location.pathname, navigate]);
 
   // Subscribe to CMS Store updates
   useEffect(() => {
@@ -77,8 +106,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const handleLogout = () => {
     cmsStore.logout();
-    navigate('/admin/login');
+    navigate('/admin/login', { replace: true });
   };
+
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+        <div className="flex flex-col items-center space-y-3">
+          <div className="w-8 h-8 border-4 border-teal-200 border-t-[#087F78] rounded-full animate-spin" />
+          <p className="text-xs font-semibold tracking-wider uppercase text-[#123B3A]">Verifying Admin Authorization...</p>
+        </div>
+      </div>
+    );
+  }
 
   const navSections = [
     {

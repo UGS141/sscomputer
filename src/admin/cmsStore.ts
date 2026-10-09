@@ -510,46 +510,49 @@ class CMSStore {
   // --- MUTATORS (WITH AUDIT LOGGING & AWAITED API WRITES) ---
 
   // Auth
-  public async loginWithBackend(email: string, password: string): Promise<{ success: boolean; message?: string }> {
-    const res = await apiService.login(email, password);
+  public async verifySession(): Promise<boolean> {
+    const token = localStorage.getItem('ssci_jwt_token');
+    if (!token) {
+      this.state.currentUser = null;
+      this.saveToStorage();
+      return false;
+    }
+    const res = await apiService.verifyMe();
     if (res?.success && res.user) {
       const user: AdminUser = {
-        id: res.user.id || `user-${Date.now()}`,
+        id: res.user._id || res.user.id || `user-${Date.now()}`,
+        name: res.user.name || 'SSCI Admin',
+        email: res.user.email,
+        role: res.user.role || 'SUPER ADMIN',
+        permissions: res.user.permissions || ['all']
+      };
+      this.state.currentUser = user;
+      localStorage.setItem('ssci_user', JSON.stringify(user));
+      this.saveToStorage();
+      return true;
+    } else {
+      this.logout();
+      return false;
+    }
+  }
+
+  public async loginWithBackend(email: string, password: string): Promise<{ success: boolean; message?: string }> {
+    const res = await apiService.login(email, password);
+    if (res?.success && res.user && res.token) {
+      const user: AdminUser = {
+        id: res.user.id || res.user._id || `user-${Date.now()}`,
         name: res.user.name || 'SSCI Admin',
         email: res.user.email || email,
         role: res.user.role || 'SUPER ADMIN',
         permissions: res.user.permissions || ['all']
       };
       this.state.currentUser = user;
+      localStorage.setItem('ssci_user', JSON.stringify(user));
       this.logAudit(user.name, 'LOGIN', 'Authentication', `Admin user "${user.name}" logged in via backend API.`);
       this.saveToStorage();
       return { success: true };
     }
     return { success: false, message: res?.message || 'Authentication failed. Please check credentials or backend connection.' };
-  }
-
-  public login(email: string, role: AdminUser['role'] = 'ADMIN'): boolean {
-    const nameMap: Record<string, string> = {
-      'SUPER ADMIN': 'Master Admin',
-      'ADMIN': 'SSCI Admin',
-      'COUNSELLOR': 'Admissions Counselor',
-      'CONTENT MANAGER': 'Content Editor',
-      'TRAINER': 'Lead Faculty Trainer',
-      'VIEWER': 'Guest Analyst'
-    };
-
-    const user: AdminUser = {
-      id: `user-${Date.now()}`,
-      name: nameMap[role] || 'SSCI Staff',
-      email: email,
-      role: role,
-      permissions: ['all']
-    };
-
-    this.state.currentUser = user;
-    this.logAudit(user.name, 'LOGIN', 'Authentication', `User logged in with role ${role}.`);
-    this.saveToStorage();
-    return true;
   }
 
   public logout() {

@@ -60,6 +60,11 @@ export const apiService = {
     return res || { success: false, message: 'Backend login failed. Server unreachable.' };
   },
 
+  // Verify Active Session
+  verifyMe: async (): Promise<{ success: boolean; user?: any; message?: string } | null> => {
+    return await apiService.request('/api/auth/me');
+  },
+
   // Admin Logout
   logout: () => {
     localStorage.removeItem('ssci_jwt_token');

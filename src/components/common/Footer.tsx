@@ -41,7 +41,7 @@ export const Footer: React.FC = () => {
               <a
                 href={SITE_CONFIG.social.instagram}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="w-9 h-9 rounded-lg bg-teal-900/80 hover:bg-[#F97316] flex items-center justify-center text-teal-200 hover:text-white transition-all duration-200"
                 aria-label="Instagram"
               >
@@ -52,7 +52,7 @@ export const Footer: React.FC = () => {
               <a
                 href={SITE_CONFIG.social.facebook}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="w-9 h-9 rounded-lg bg-teal-900/80 hover:bg-[#087F78] flex items-center justify-center text-teal-200 hover:text-white transition-all duration-200"
                 aria-label="Facebook"
               >
@@ -63,7 +63,7 @@ export const Footer: React.FC = () => {
               <a
                 href={SITE_CONFIG.social.youtube}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="w-9 h-9 rounded-lg bg-teal-900/80 hover:bg-red-600 flex items-center justify-center text-teal-200 hover:text-white transition-all duration-200"
                 aria-label="YouTube"
               >
@@ -74,7 +74,7 @@ export const Footer: React.FC = () => {
               <a
                 href={SITE_CONFIG.social.linkedin}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="w-9 h-9 rounded-lg bg-teal-900/80 hover:bg-[#12A77A] flex items-center justify-center text-teal-200 hover:text-white transition-all duration-200"
                 aria-label="LinkedIn"
               >

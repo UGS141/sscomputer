@@ -1,15 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Lock, Mail, ArrowRight, CheckCircle2, Building2 } from 'lucide-react';
-import { cmsStore, type AdminUser } from '../cmsStore';
+import { Shield, Lock, Mail, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { cmsStore } from '../cmsStore';
 
 export const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('admin@sscomputer.in');
   const [password, setPassword] = useState('admin123');
-  const [selectedRole, setSelectedRole] = useState<AdminUser['role']>('SUPER ADMIN');
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+    const checkActiveSession = async () => {
+      const isValid = await cmsStore.verifySession();
+      if (isMounted) {
+        if (isValid) {
+          navigate('/admin', { replace: true });
+        } else {
+          setCheckingSession(false);
+        }
+      }
+    };
+    checkActiveSession();
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,32 +42,27 @@ export const AdminLoginPage: React.FC = () => {
       const res = await cmsStore.loginWithBackend(email, password);
       if (res.success) {
         setLoading(false);
-        navigate('/admin');
+        navigate('/admin', { replace: true });
         return;
       }
-
-      // If backend login fails (e.g. server sleeping/offline or connection error),
-      // allow fallback local login for default admin credentials so admin access is never locked out
-      if (email === 'admin@sscomputer.in' && password === 'admin123') {
-        cmsStore.login(email, selectedRole);
-        setLoading(false);
-        navigate('/admin');
-        return;
-      }
-
       setError(res.message || 'Authentication failed. Please check your credentials and server connection.');
       setLoading(false);
     } catch (err: any) {
-      if (email === 'admin@sscomputer.in' && password === 'admin123') {
-        cmsStore.login(email, selectedRole);
-        setLoading(false);
-        navigate('/admin');
-        return;
-      }
-      setError(err.message || 'Server login failed. Please check your connection.');
+      setError(err?.message || 'Server login failed. Please check your connection.');
       setLoading(false);
     }
   };
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#123B3A] via-[#087F78] to-[#123B3A] flex items-center justify-center p-4">
+        <div className="flex flex-col items-center space-y-3 text-white">
+          <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+          <p className="text-xs font-semibold tracking-wider uppercase text-teal-200">Verifying Admin Session...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#123B3A] via-[#087F78] to-[#123B3A] flex items-center justify-center p-4 relative overflow-hidden">
@@ -120,23 +133,6 @@ export const AdminLoginPage: React.FC = () => {
                 required
               />
             </div>
-          </div>
-
-          {/* Role Preset Selector */}
-          <div>
-            <label className="block text-xs font-bold text-[#123B3A] mb-1.5 uppercase tracking-wider">
-              Login Role Preset
-            </label>
-            <select
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value as AdminUser['role'])}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-[#087F78] bg-teal-50/50 focus:outline-none focus:border-[#087F78]"
-            >
-              <option value="SUPER ADMIN">Super Admin (Full Master Control)</option>
-              <option value="ADMIN">Admin (Website & CRM Control)</option>
-              <option value="COUNSELLOR">Admissions Counsellor (Leads & Follow-ups)</option>
-              <option value="CONTENT MANAGER">Content Manager (Blog & Courses)</option>
-            </select>
           </div>
 
           <button

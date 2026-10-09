@@ -58,6 +58,14 @@ app.use(
 
 app.use(express.json());
 
+// Security Cache Control (Prevent browser & proxy caching of protected API responses)
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
 // In-Memory Rate Limiter Middleware (Zero-Dependency, Sliding Window)
 const createRateLimiter = ({ windowMs = 60 * 1000, maxHits = 10, message = 'Too many requests. Please try again later.' }) => {
   const requests = new Map();
