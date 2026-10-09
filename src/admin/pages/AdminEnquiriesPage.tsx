@@ -11,6 +11,9 @@ import {
   Clock,
   Calendar,
   CheckCircle2,
+  AlertTriangle,
+  Loader2,
+  Trash2,
   X,
   Send,
   Sparkles
@@ -22,10 +25,12 @@ export const AdminEnquiriesPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [deleteModalLead, setDeleteModalLead] = useState<Lead | null>(null);
 
   // Note form input
   const [noteInput, setNoteInput] = useState('');
-  const [followUpDateInput, setFollowUpDateInput] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     const unsubscribe = cmsStore.subscribe(() => {
@@ -37,6 +42,11 @@ export const AdminEnquiriesPage: React.FC = () => {
     });
     return unsubscribe;
   }, [selectedLead]);
+
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 4000);
+  };
 
   const filteredLeads = leads.filter((l) => {
     const matchesSearch =
@@ -61,6 +71,7 @@ export const AdminEnquiriesPage: React.FC = () => {
 
   const handleStatusChange = (id: string, newStatus: Lead['status']) => {
     cmsStore.updateLeadStatus(id, newStatus);
+    showNotification('success', `Lead status updated to "${newStatus}".`);
   };
 
   const handleAddNote = (e: React.FormEvent) => {
@@ -69,16 +80,66 @@ export const AdminEnquiriesPage: React.FC = () => {
 
     cmsStore.addLeadNote(selectedLead.id, noteInput);
     setNoteInput('');
+    showNotification('success', 'Counselor note saved.');
   };
 
   const handleConvert = async (id: string) => {
     if (window.confirm('Convert this lead into an official registered SSCI Student?')) {
-      await cmsStore.convertLeadToStudent(id);
+      setActionLoading(true);
+      try {
+        await cmsStore.convertLeadToStudent(id);
+        showNotification('success', 'Lead successfully converted into registered SSCI Student.');
+      } catch (err: any) {
+        showNotification('error', err.message || 'Failed to convert lead.');
+      } finally {
+        setActionLoading(false);
+      }
+    }
+  };
+
+  const handleConfirmDeleteLead = async () => {
+    if (!deleteModalLead) return;
+
+    setActionLoading(true);
+    try {
+      await cmsStore.deleteLead(deleteModalLead.id);
+      showNotification('success', `Lead enquiry for "${deleteModalLead.name}" deleted successfully.`);
+      if (selectedLead?.id === deleteModalLead.id) {
+        setSelectedLead(null);
+      }
+      setDeleteModalLead(null);
+    } catch (err: any) {
+      showNotification('error', err.message || 'Failed to delete lead enquiry.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
   return (
     <div className="space-y-6 animate-fadeIn">
+      {/* Toast Notification Banner */}
+      {notification && (
+        <div
+          className={`p-4 rounded-xl border flex items-center justify-between shadow-md transition-all ${
+            notification.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            {notification.type === 'success' ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+            )}
+            <p className="text-xs font-bold">{notification.message}</p>
+          </div>
+          <button onClick={() => setNotification(null)} className="text-gray-400 hover:text-gray-600">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-teal-100/70 shadow-2xs">
         <div>
@@ -109,10 +170,10 @@ export const AdminEnquiriesPage: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
                   activeTab === tab.id
-                    ? 'bg-[#087F78] text-white shadow-xs'
-                    : 'bg-gray-100 text-gray-600 hover:bg-teal-50 hover:text-[#087F78]'
+                    ? 'brand-gradient-bg text-white shadow-xs'
+                    : 'bg-teal-50/60 text-[#4B6B69] hover:bg-teal-100/50'
                 }`}
               >
                 {tab.label}
@@ -209,6 +270,13 @@ export const AdminEnquiriesPage: React.FC = () => {
                             <UserCheck className="w-4 h-4" />
                           </button>
                         )}
+                        <button
+                          onClick={() => setDeleteModalLead(lead)}
+                          title="Delete Lead Enquiry"
+                          className="p-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -233,7 +301,7 @@ export const AdminEnquiriesPage: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setSelectedLead(null)}
-                  className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-500"
+                  className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -308,23 +376,84 @@ export const AdminEnquiriesPage: React.FC = () => {
               </div>
             </div>
 
-            {selectedLead.status !== 'Converted' ? (
+            <div className="space-y-2 pt-4 border-t border-gray-100">
+              {selectedLead.status !== 'Converted' ? (
+                <button
+                  onClick={() => handleConvert(selectedLead.id)}
+                  disabled={actionLoading}
+                  className="w-full py-3 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-md hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>Convert to Registered SSCI Student</span>
+                </button>
+              ) : (
+                <a
+                  href={`/admin/students?search=${encodeURIComponent(selectedLead.name)}`}
+                  className="w-full py-3 rounded-xl bg-teal-50 text-[#087F78] text-xs font-bold border border-teal-200 hover:bg-teal-100 transition-colors flex items-center justify-center gap-2"
+                >
+                  <UserCheck className="w-4 h-4 text-[#12A77A]" />
+                  <span>Registered Student — View / Edit Record</span>
+                </a>
+              )}
+
               <button
-                onClick={() => handleConvert(selectedLead.id)}
-                className="w-full py-3 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-md hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+                onClick={() => setDeleteModalLead(selectedLead)}
+                className="w-full py-2.5 rounded-xl bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 text-xs font-bold transition-colors flex items-center justify-center gap-2"
               >
-                <UserCheck className="w-4 h-4" />
-                <span>Convert to Registered SSCI Student</span>
+                <Trash2 className="w-4 h-4 text-red-600" />
+                <span>Delete Lead Enquiry Record</span>
               </button>
-            ) : (
-              <a
-                href={`/admin/students?search=${encodeURIComponent(selectedLead.name)}`}
-                className="w-full py-3 rounded-xl bg-teal-50 text-[#087F78] text-xs font-bold border border-teal-200 hover:bg-teal-100 transition-colors flex items-center justify-center gap-2"
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE LEAD CONFIRMATION MODAL */}
+      {deleteModalLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDeleteModalLead(null)} />
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden z-10 border border-red-100 p-6 space-y-4">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="p-3 rounded-full bg-red-100 shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-[#123B3A]">Delete Lead Enquiry?</h3>
+                <p className="text-xs text-red-600 font-bold">{deleteModalLead.id}</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-600 leading-relaxed bg-red-50/50 p-3 rounded-xl border border-red-100">
+              You are about to delete the lead enquiry from{' '}
+              <strong className="text-[#123B3A]">{deleteModalLead.name}</strong> ({deleteModalLead.phone}).
+              This action will permanently delete the enquiry record from MongoDB Atlas.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteModalLead(null)}
+                className="py-2.5 px-4 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200"
               >
-                <UserCheck className="w-4 h-4 text-[#12A77A]" />
-                <span>Registered Student — View / Edit Record</span>
-              </a>
-            )}
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={handleConfirmDeleteLead}
+                className="py-2.5 px-5 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 shadow-md flex items-center gap-2 disabled:opacity-50"
+              >
+                {actionLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" /> Confirm Delete
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

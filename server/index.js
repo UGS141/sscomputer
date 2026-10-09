@@ -331,6 +331,19 @@ app.put('/api/leads/:id/status', authenticateToken, authorizeRoles('SUPER ADMIN'
   }
 });
 
+app.delete('/api/leads/:id', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const lead = await Lead.findOneAndDelete({ id: req.params.id });
+    if (!lead) {
+      return res.status(404).json({ success: false, message: 'Lead enquiry record not found.' });
+    }
+    await logAudit(req.user.name, 'DELETE_LEAD', 'CRM', `Deleted lead enquiry "${lead.id}" (${lead.name}).`);
+    res.json({ success: true, message: 'Lead enquiry record deleted successfully.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error deleting lead enquiry.' });
+  }
+});
+
 // ----------------------------------------------------
 // CERTIFICATE VERIFICATION APIs
 // ----------------------------------------------------

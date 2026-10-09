@@ -129,6 +129,9 @@ export const apiService = {
   updateLeadStatus: async (id: string, status: string, noteText?: string) => {
     return await apiService.request(`/api/leads/${id}/status`, 'PUT', { status, noteText });
   },
+  deleteLead: async (id: string) => {
+    return await apiService.request(`/api/leads/${encodeURIComponent(id)}`, 'DELETE');
+  },
   getCertificates: async () => {
     return await apiService.request('/api/certificates');
   },

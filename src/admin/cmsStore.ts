@@ -755,6 +755,21 @@ class CMSStore {
     }
   }
 
+  public async deleteLead(id: string) {
+    const target = this.state.leads.find((l) => l.id === id);
+    const targetName = target ? target.name : id;
+
+    const res = await apiService.deleteLead(id);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to delete lead enquiry.');
+    }
+
+    this.state.leads = this.state.leads.filter((l) => l.id !== id);
+    this.logAudit(this.getUserName(), 'DELETE_LEAD', 'CRM', `Deleted lead enquiry "${id}" (${targetName}).`);
+    this.saveToStorage();
+    return true;
+  }
+
   public async convertLeadToStudent(id: string) {
     const lead = this.state.leads.find((l) => l.id === id);
     if (lead) {
