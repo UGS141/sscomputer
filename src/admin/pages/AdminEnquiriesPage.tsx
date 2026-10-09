@@ -71,9 +71,9 @@ export const AdminEnquiriesPage: React.FC = () => {
     setNoteInput('');
   };
 
-  const handleConvert = (id: string) => {
+  const handleConvert = async (id: string) => {
     if (window.confirm('Convert this lead into an official registered SSCI Student?')) {
-      cmsStore.convertLeadToStudent(id);
+      await cmsStore.convertLeadToStudent(id);
     }
   };
 
@@ -308,7 +308,7 @@ export const AdminEnquiriesPage: React.FC = () => {
               </div>
             </div>
 
-            {selectedLead.status !== 'Converted' && (
+            {selectedLead.status !== 'Converted' ? (
               <button
                 onClick={() => handleConvert(selectedLead.id)}
                 className="w-full py-3 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-md hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
@@ -316,6 +316,14 @@ export const AdminEnquiriesPage: React.FC = () => {
                 <UserCheck className="w-4 h-4" />
                 <span>Convert to Registered SSCI Student</span>
               </button>
+            ) : (
+              <a
+                href={`/admin/students?search=${encodeURIComponent(selectedLead.name)}`}
+                className="w-full py-3 rounded-xl bg-teal-50 text-[#087F78] text-xs font-bold border border-teal-200 hover:bg-teal-100 transition-colors flex items-center justify-center gap-2"
+              >
+                <UserCheck className="w-4 h-4 text-[#12A77A]" />
+                <span>Registered Student — View / Edit Record</span>
+              </a>
             )}
           </div>
         </div>

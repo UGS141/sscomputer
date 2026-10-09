@@ -334,7 +334,7 @@ class CMSStore {
 
   public async refreshFromBackend() {
     try {
-      const [coursesRes, batchesRes, blogRes, trainersRes, heroRes, settingsRes, annRes, skillsRes, leadsRes] = await Promise.all([
+      const [coursesRes, batchesRes, blogRes, trainersRes, heroRes, settingsRes, annRes, skillsRes, leadsRes, studentsRes] = await Promise.all([
         apiService.getCourses(),
         apiService.getBatches(),
         apiService.getBlogPosts(),
@@ -344,6 +344,7 @@ class CMSStore {
         apiService.getAnnouncement(),
         apiService.getFloatingSkills(),
         apiService.getLeads(),
+        apiService.getStudents(),
       ]);
 
       if (coursesRes?.success && Array.isArray(coursesRes.courses)) {
@@ -372,6 +373,9 @@ class CMSStore {
       }
       if (leadsRes?.success && Array.isArray(leadsRes.leads)) {
         this.state.leads = leadsRes.leads;
+      }
+      if (studentsRes?.success && Array.isArray(studentsRes.students)) {
+        this.state.students = studentsRes.students;
       }
       this.saveToStorage();
     } catch (e) {
@@ -751,9 +755,21 @@ class CMSStore {
     }
   }
 
-  public convertLeadToStudent(id: string) {
+  public async convertLeadToStudent(id: string) {
     const lead = this.state.leads.find((l) => l.id === id);
     if (lead) {
+      const existingStudent = this.state.students.find(
+        (s) => s.phone === lead.phone || (lead.email && s.email === lead.email)
+      );
+
+      if (existingStudent) {
+        lead.status = 'Converted';
+        lead.updatedAt = new Date().toISOString();
+        await apiService.updateLeadStatus(id, 'Converted', 'Lead converted (student record already exists)');
+        this.saveToStorage();
+        return existingStudent;
+      }
+
       lead.status = 'Converted';
       lead.updatedAt = new Date().toISOString();
 
@@ -770,10 +786,94 @@ class CMSStore {
         certificatesIssued: []
       };
 
-      this.state.students.unshift(newStudent);
-      this.logAudit(this.getUserName(), 'CONVERT_LEAD', 'CRM', `Converted lead ${id} (${lead.name}) into registered student ${newStudent.studentId}.`);
+      const res = await apiService.saveStudent(newStudent);
+      const savedStudent = res?.success && res.student ? res.student : newStudent;
+
+      await apiService.updateLeadStatus(id, 'Converted', `Converted to registered student ${savedStudent.studentId}`);
+
+      const idx = this.state.students.findIndex((s) => s.id === savedStudent.id || s.studentId === savedStudent.studentId);
+      if (idx >= 0) {
+        this.state.students[idx] = savedStudent;
+      } else {
+        this.state.students.unshift(savedStudent);
+      }
+      this.logAudit(this.getUserName(), 'CONVERT_LEAD', 'CRM', `Converted lead ${id} (${lead.name}) into registered student ${savedStudent.studentId}.`);
       this.saveToStorage();
+      return savedStudent;
     }
+  }
+
+  public async saveStudent(studentData: Partial<Student> & { name: string; phone: string; email: string; course: string; batch: string }) {
+    const isEdit = Boolean(studentData.id || studentData.studentId);
+    let targetStudent: Student;
+
+    if (isEdit) {
+      const existing = this.state.students.find((s) => s.id === studentData.id || s.studentId === studentData.studentId);
+      targetStudent = {
+        ...existing,
+        ...studentData,
+      } as Student;
+    } else {
+      const count = this.state.students.length + 1;
+      targetStudent = {
+        id: `STD-${Date.now().toString().slice(-4)}`,
+        studentId: `SSCI-STD-2026-${count.toString().padStart(2, '0')}`,
+        admissionDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+        status: 'Active',
+        certificatesIssued: [],
+        ...studentData,
+      } as Student;
+    }
+
+    const res = await apiService.saveStudent(targetStudent);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to save student record to database.');
+    }
+
+    const saved = res.student || targetStudent;
+    const idx = this.state.students.findIndex((s) => s.id === saved.id || s.studentId === saved.studentId);
+    if (idx >= 0) {
+      this.state.students[idx] = saved;
+      this.logAudit(this.getUserName(), 'UPDATE_STUDENT', 'Students', `Updated student record for "${saved.name}" (${saved.studentId}).`);
+    } else {
+      this.state.students.unshift(saved);
+      this.logAudit(this.getUserName(), 'CREATE_STUDENT', 'Students', `Created student record for "${saved.name}" (${saved.studentId}).`);
+    }
+
+    this.saveToStorage();
+    return saved;
+  }
+
+  public async updateStudent(id: string, updateData: Partial<Student>) {
+    const res = await apiService.updateStudent(id, updateData);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to update student record.');
+    }
+
+    const updated = res.student;
+    const idx = this.state.students.findIndex((s) => s.id === id || s.studentId === id);
+    if (idx >= 0 && updated) {
+      this.state.students[idx] = updated;
+    }
+    this.logAudit(this.getUserName(), 'UPDATE_STUDENT', 'Students', `Updated student record "${id}".`);
+    this.saveToStorage();
+    return updated;
+  }
+
+  public async deleteStudent(id: string) {
+    const target = this.state.students.find((s) => s.id === id || s.studentId === id);
+    const targetName = target ? target.name : id;
+    const targetId = target ? target.studentId : id;
+
+    const res = await apiService.deleteStudent(id);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to delete student record.');
+    }
+
+    this.state.students = this.state.students.filter((s) => s.id !== id && s.studentId !== id);
+    this.logAudit(this.getUserName(), 'DELETE_STUDENT', 'Students', `Deleted student record for "${targetName}" (${targetId}).`);
+    this.saveToStorage();
+    return true;
   }
 
   // Blog CMS

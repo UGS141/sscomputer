@@ -172,8 +172,17 @@ export const apiService = {
   },
 
   // Students API
+  getStudentById: async (id: string) => {
+    return await apiService.request(`/api/students/${encodeURIComponent(id)}`);
+  },
   saveStudent: async (studentData: any) => {
     return await apiService.request('/api/students', 'POST', studentData);
+  },
+  updateStudent: async (id: string, studentData: any) => {
+    return await apiService.request(`/api/students/${encodeURIComponent(id)}`, 'PUT', studentData);
+  },
+  deleteStudent: async (id: string) => {
+    return await apiService.request(`/api/students/${encodeURIComponent(id)}`, 'DELETE');
   },
 
   // Floating Skills API

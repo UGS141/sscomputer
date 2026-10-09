@@ -504,18 +504,94 @@ app.get('/api/students', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN
   }
 });
 
+app.get('/api/students/:id', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const student = await Student.findOne({
+      $or: [{ id: req.params.id }, { studentId: req.params.id }]
+    });
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student record not found.' });
+    }
+    res.json({ success: true, student });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error fetching student details.' });
+  }
+});
+
 app.post('/api/students', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
   try {
     const studentData = req.body;
+    if (!studentData.name || typeof studentData.name !== 'string' || studentData.name.trim().length < 2) {
+      return res.status(400).json({ success: false, message: 'A valid student name is required.' });
+    }
+    if (!studentData.phone || typeof studentData.phone !== 'string' || studentData.phone.trim().length < 8) {
+      return res.status(400).json({ success: false, message: 'A valid phone number is required.' });
+    }
+    if (!studentData.course || typeof studentData.course !== 'string') {
+      return res.status(400).json({ success: false, message: 'Course selection is required.' });
+    }
+
+    if (!studentData.studentId) {
+      const count = await Student.countDocuments();
+      studentData.studentId = `SSCI-STD-2026-${(count + 1).toString().padStart(2, '0')}`;
+    }
+    if (!studentData.id) {
+      studentData.id = `STD-${Date.now().toString().slice(-4)}`;
+    }
+
     const student = await Student.findOneAndUpdate(
-      { studentId: studentData.studentId },
+      { $or: [{ studentId: studentData.studentId }, { id: studentData.id }] },
       studentData,
       { upsert: true, new: true, runValidators: true }
     );
-    await logAudit(req.user.name, 'SAVE_STUDENT', 'Students', `Saved student "${student.name}".`);
+    await logAudit(req.user.name, 'SAVE_STUDENT', 'Students', `Saved student "${student.name}" (${student.studentId}).`);
     res.json({ success: true, student });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+app.put('/api/students/:id', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const allowedUpdates = ['name', 'phone', 'email', 'course', 'batch', 'admissionDate', 'status', 'grade', 'certificatesIssued'];
+    const updates = {};
+    Object.keys(req.body).forEach((key) => {
+      if (allowedUpdates.includes(key)) {
+        updates[key] = req.body[key];
+      }
+    });
+
+    if (updates.name && (typeof updates.name !== 'string' || updates.name.trim().length < 2)) {
+      return res.status(400).json({ success: false, message: 'Student name must be at least 2 characters.' });
+    }
+
+    const student = await Student.findOneAndUpdate(
+      { $or: [{ id: req.params.id }, { studentId: req.params.id }] },
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student record not found.' });
+    }
+    await logAudit(req.user.name, 'UPDATE_STUDENT', 'Students', `Updated student record for "${student.name}" (${student.studentId}).`);
+    res.json({ success: true, student });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+app.delete('/api/students/:id', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const student = await Student.findOneAndDelete({
+      $or: [{ id: req.params.id }, { studentId: req.params.id }]
+    });
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student record not found.' });
+    }
+    await logAudit(req.user.name, 'DELETE_STUDENT', 'Students', `Deleted student record for "${student.name}" (${student.studentId}).`);
+    res.json({ success: true, message: 'Student record deleted successfully.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error deleting student record.' });
   }
 });
 
