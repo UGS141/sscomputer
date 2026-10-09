@@ -16,7 +16,9 @@ import {
   Trash2,
   X,
   Send,
-  Sparkles
+  Sparkles,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
 import { cmsStore, type Lead } from '../cmsStore';
 
@@ -68,6 +70,64 @@ export const AdminEnquiriesPage: React.FC = () => {
 
     return matchesSearch && matchesStatus;
   });
+
+  const handleExportToExcel = () => {
+    const dataToExport = filteredLeads.length > 0 ? filteredLeads : leads;
+
+    if (dataToExport.length === 0) {
+      showNotification('error', 'No lead records available to export.');
+      return;
+    }
+
+    const headers = [
+      'Lead ID',
+      'Candidate Name',
+      'Phone Number',
+      'Email Address',
+      'Interested Course',
+      'Preferred Batch',
+      'Channel / Source',
+      'Pipeline Status',
+      'Enquiry Date',
+      'Counselor Notes',
+      'Message',
+    ];
+
+    const escapeCsv = (str: any) => {
+      if (str === null || str === undefined) return '""';
+      const stringified = String(str).replace(/"/g, '""');
+      return `"${stringified}"`;
+    };
+
+    const rows = dataToExport.map((l: Lead) => [
+      escapeCsv(l.id),
+      escapeCsv(l.name),
+      escapeCsv(l.phone),
+      escapeCsv(l.email || 'N/A'),
+      escapeCsv(l.courseInterested || 'General Enquiry'),
+      escapeCsv(l.preferredBatch || 'Any Batch'),
+      escapeCsv(l.source || 'Website'),
+      escapeCsv(l.status),
+      escapeCsv(new Date(l.createdAt).toLocaleString()),
+      escapeCsv(l.notes?.map((n: any) => `${n.author}: ${n.text}`).join('; ') || 'No notes'),
+      escapeCsv(l.message || 'N/A'),
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((row: string[]) => row.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', `SSCI_Leads_Enquiries_${todayStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showNotification('success', `Exported ${dataToExport.length} lead enquiries to Excel file.`);
+  };
 
   const handleStatusChange = (id: string, newStatus: Lead['status']) => {
     cmsStore.updateLeadStatus(id, newStatus);
@@ -149,7 +209,15 @@ export const AdminEnquiriesPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="px-3 py-1.5 rounded-xl bg-orange-100 text-[#F97316] text-xs font-bold">
+          <button
+            onClick={handleExportToExcel}
+            title="Export all lead enquiries to Microsoft Excel"
+            className="py-2.5 px-4 rounded-xl text-xs font-bold text-white brand-gradient-bg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 shrink-0"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export to Excel</span>
+          </button>
+          <span className="px-3 py-2 rounded-xl bg-orange-100 text-[#F97316] text-xs font-bold shrink-0">
             {leads.filter((l) => l.status === 'New').length} Unread Leads
           </span>
         </div>
