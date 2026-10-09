@@ -4,7 +4,7 @@ async function testDeleteLeadAPI() {
     const loginRes = await fetch('https://sscomputer-api.onrender.com/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'admin@sscomputer.in', password: 'admin123' })
+      body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })
     });
     const loginData = await loginRes.json();
     console.log('Login result:', loginRes.status, loginData.success);

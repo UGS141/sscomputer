@@ -5,8 +5,8 @@ import { cmsStore } from '../cmsStore';
 
 export const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('admin@sscomputer.in');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState('');
@@ -32,7 +32,7 @@ export const AdminLoginPage: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      setError('Please enter email and password.');
+      setError('Please enter your email and password.');
       return;
     }
     setLoading(true);
@@ -110,8 +110,9 @@ export const AdminLoginPage: React.FC = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-[#123B3A] focus:outline-none focus:border-[#087F78] focus:ring-2 focus:ring-teal-100 transition-all"
-                placeholder="admin@sscomputer.in"
+                placeholder="Enter your admin email"
                 required
               />
             </div>
@@ -128,8 +129,9 @@ export const AdminLoginPage: React.FC = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-[#123B3A] focus:outline-none focus:border-[#087F78] focus:ring-2 focus:ring-teal-100 transition-all"
-                placeholder="••••••••"
+                placeholder="Enter your password"
                 required
               />
             </div>

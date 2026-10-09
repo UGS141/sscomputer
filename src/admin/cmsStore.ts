@@ -313,13 +313,7 @@ const defaultInitialState = {
       timestamp: new Date().toISOString()
     }
   ] as AuditLog[],
-  currentUser: {
-    id: 'user-admin',
-    name: 'Sri Shanmukha Admin',
-    email: 'admin@sscomputer.in',
-    role: 'SUPER ADMIN',
-    permissions: ['all']
-  } as AdminUser | null
+  currentUser: null as AdminUser | null
 };
 
 // Singleton Data Engine
@@ -391,6 +385,7 @@ class CMSStore {
         this.state = {
           ...defaultInitialState,
           ...parsed,
+          currentUser: null, // Session authentication must always be validated via verifySession()
           floatingSkills: defaultInitialState.floatingSkills,
           heroContent: parsed.heroContent || defaultInitialState.heroContent,
           announcement: parsed.announcement || defaultInitialState.announcement,
