@@ -382,6 +382,10 @@ class CMSStore {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
+        const settings = parsed.settings || defaultInitialState.settings;
+        if (settings?.social?.instagram === 'https://www.instagram.com/sscomputerinstitutenlr?srtk=MWsyaHcycjJqYmt2dQ==') {
+          settings.social.instagram = SITE_CONFIG.social.instagram;
+        }
         this.state = {
           ...defaultInitialState,
           ...parsed,
@@ -389,7 +393,7 @@ class CMSStore {
           floatingSkills: defaultInitialState.floatingSkills,
           heroContent: parsed.heroContent || defaultInitialState.heroContent,
           announcement: parsed.announcement || defaultInitialState.announcement,
-          settings: parsed.settings || defaultInitialState.settings,
+          settings,
         };
       }
     } catch (e) {

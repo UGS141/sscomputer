@@ -3,16 +3,23 @@ import { SITE_CONFIG } from '../../config/site';
 import { cmsStore } from '../../admin/cmsStore';
 import { trackSEOEvent } from '../../seo/analytics';
 
+const resolveInstagramUrl = (url?: string) => {
+  if (!url || url === 'https://www.instagram.com/sscomputerinstitutenlr?srtk=MWsyaHcycjJqYmt2dQ==') {
+    return SITE_CONFIG.social.instagram;
+  }
+  return url;
+};
+
 export const InstagramFloat: React.FC = () => {
   const [instagramUrl, setInstagramUrl] = useState<string>(
-    () => cmsStore.getSettings()?.social?.instagram || SITE_CONFIG.social.instagram
+    () => resolveInstagramUrl(cmsStore.getSettings()?.social?.instagram)
   );
 
   useEffect(() => {
     const unsubscribe = cmsStore.subscribe(() => {
       const updatedUrl = cmsStore.getSettings()?.social?.instagram;
       if (updatedUrl) {
-        setInstagramUrl(updatedUrl);
+        setInstagramUrl(resolveInstagramUrl(updatedUrl));
       }
     });
     return unsubscribe;

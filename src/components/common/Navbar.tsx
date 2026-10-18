@@ -138,18 +138,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEnquiry, onOpenMobileMenu 
       {/* =========================================================
           DESKTOP FLOATING GLASS NAVBAR (ONLY FOR >= 1024px)
          ========================================================= */}
-      <header className="hidden lg:block sticky top-3 z-50 w-full px-6 xl:px-12 transition-all duration-300">
-        <div className="max-w-[1440px] mx-auto space-y-2">
+      <header className="hidden lg:block sticky top-2 xl:top-3 z-50 w-full px-3 lg:px-4 xl:px-6 2xl:px-10 transition-all duration-300">
+        <div className="max-w-[1440px] mx-auto space-y-1.5 xl:space-y-2">
           
           {/* Top Utility Glass Bar */}
           <div
-            className={`transition-all duration-300 rounded-full px-6 py-1.5 flex items-center justify-between text-xs border ${
+            className={`transition-all duration-300 rounded-full px-4 xl:px-6 py-1.5 flex items-center justify-between text-xs border ${
               scrolled
                 ? 'bg-white/85 backdrop-blur-xl border-white/60 shadow-xs text-[#123B3A]'
                 : 'bg-white/60 backdrop-blur-lg border-white/50 text-[#123B3A]'
             }`}
           >
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-4 xl:gap-5">
               <a
                 href={`tel:${SITE_CONFIG.contact.phonePrimary}`}
                 className="flex items-center gap-1.5 font-semibold text-[#087F78] hover:text-[#123B3A] transition-colors"
@@ -162,7 +162,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEnquiry, onOpenMobileMenu 
 
               <a
                 href={`mailto:${SITE_CONFIG.contact.email}`}
-                className="flex items-center gap-1.5 font-medium text-gray-700 hover:text-[#087F78] transition-colors truncate max-w-[280px] xl:max-w-none"
+                className="flex items-center gap-1.5 font-medium text-gray-700 hover:text-[#087F78] transition-colors truncate max-w-[260px] xl:max-w-none"
               >
                 <Mail className="w-3.5 h-3.5 text-[#087F78]" />
                 <span className="truncate">{SITE_CONFIG.contact.email}</span>
@@ -174,7 +174,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEnquiry, onOpenMobileMenu 
               <span>{SITE_CONFIG.tagline}</span>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 xl:gap-4">
               <Link
                 to="/verify-certificate"
                 className="flex items-center gap-1.5 font-bold text-[#087F78] hover:text-[#F97316] transition-colors"
@@ -199,38 +199,38 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEnquiry, onOpenMobileMenu 
 
           {/* Main Floating Glass Pill Header */}
           <div
-            className={`w-full transition-all duration-300 rounded-[24px] px-6 py-3 border flex items-center justify-between gap-4 ${
+            className={`w-full transition-all duration-300 rounded-[24px] px-3.5 lg:px-4 xl:px-5 2xl:px-6 py-2.5 xl:py-3 border flex items-center justify-between gap-2 lg:gap-2.5 xl:gap-3 2xl:gap-4 ${
               scrolled
                 ? 'bg-white/85 backdrop-blur-[20px] backdrop-saturate-[160%] border-white/80 shadow-[0_12px_45px_rgba(8,127,120,0.14)]'
                 : 'bg-white/65 backdrop-blur-[18px] backdrop-saturate-[150%] border-white/60 shadow-[0_10px_40px_rgba(8,127,120,0.08)]'
             }`}
           >
             {/* SSCI Logo */}
-            <Link to="/" className="flex items-center gap-3 shrink-0 group">
+            <Link to="/" className="flex items-center gap-2 xl:gap-2.5 shrink-0 group">
               <img
                 src={SITE_CONFIG.logo}
                 alt={SITE_CONFIG.name}
-                className="h-11 xl:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                className="h-9 xl:h-10 2xl:h-11 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
               />
-              <div>
-                <div className="text-sm xl:text-base font-extrabold text-[#123B3A] tracking-tight leading-none group-hover:text-[#087F78] transition-colors">
+              <div className="hidden min-[1240px]:block">
+                <div className="text-xs xl:text-sm 2xl:text-base font-extrabold text-[#123B3A] tracking-tight leading-none group-hover:text-[#087F78] transition-colors whitespace-nowrap">
                   SRI SHANMUKHA
                 </div>
-                <div className="text-[10px] font-semibold text-[#087F78] tracking-widest leading-tight">
+                <div className="text-[9px] xl:text-[10px] font-semibold text-[#087F78] tracking-widest leading-tight mt-0.5 whitespace-nowrap">
                   COMPUTER INSTITUTE
                 </div>
               </div>
             </Link>
 
             {/* Desktop Navigation Links */}
-            <nav className="flex items-center gap-1 xl:gap-1.5">
+            <nav className="flex items-center gap-0.5 lg:gap-1 xl:gap-1 2xl:gap-1.5 min-w-0">
               {SITE_CONFIG.navLinks.map((link) => {
                 const active = isActive(link.path);
                 return (
                   <Link
                     key={link.path}
                     to={link.path}
-                    className={`px-3 py-1.5 rounded-xl text-xs xl:text-sm font-semibold transition-all duration-200 whitespace-nowrap relative ${
+                    className={`px-2 lg:px-2 xl:px-2.5 2xl:px-3 py-1.5 rounded-xl text-[11px] lg:text-[11.5px] xl:text-xs 2xl:text-sm font-semibold transition-all duration-200 whitespace-nowrap relative ${
                       active
                         ? 'text-[#087F78] bg-teal-50/90 shadow-xs'
                         : 'text-[#123B3A] hover:text-[#087F78] hover:bg-teal-50/60'
@@ -238,7 +238,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEnquiry, onOpenMobileMenu 
                   >
                     {link.label}
                     {active && (
-                      <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-[#087F78] rounded-full" />
+                      <span className="absolute bottom-0 left-2 right-2 2xl:left-3 2xl:right-3 h-0.5 bg-[#087F78] rounded-full" />
                     )}
                   </Link>
                 );
@@ -246,7 +246,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEnquiry, onOpenMobileMenu 
             </nav>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-1.5 lg:gap-2 xl:gap-2.5 2xl:gap-3 shrink-0">
               {/* Login Selector Dropdown Trigger */}
               <div className="relative" ref={loginDropdownRef}>
                 <button
@@ -254,11 +254,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEnquiry, onOpenMobileMenu 
                   onClick={() => setIsLoginDropdownOpen((prev) => !prev)}
                   aria-label="Login"
                   aria-expanded={isLoginDropdownOpen}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs xl:text-sm font-bold text-[#087F78] bg-white/60 border border-teal-200/80 hover:bg-white hover:border-[#087F78] transition-all duration-200 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#087F78]/30"
+                  className="flex items-center gap-1 xl:gap-1.5 px-2.5 lg:px-3 xl:px-3.5 py-1.5 xl:py-2 rounded-xl text-xs xl:text-xs 2xl:text-sm font-bold text-[#087F78] bg-white/60 border border-teal-200/80 hover:bg-white hover:border-[#087F78] transition-all duration-200 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#087F78]/30"
                 >
-                  <UserRound className="w-4 h-4 text-[#087F78]" />
+                  <UserRound className="w-3.5 h-3.5 xl:w-4 xl:h-4 text-[#087F78]" />
                   <span className="whitespace-nowrap">Login</span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-[#087F78] transition-transform duration-200 ${isLoginDropdownOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3 h-3 xl:w-3.5 xl:h-3.5 text-[#087F78] transition-transform duration-200 ${isLoginDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* Login Dropdown Menu */}
@@ -320,10 +320,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenEnquiry, onOpenMobileMenu 
               {/* Enquire Now Button */}
               <button
                 onClick={() => onOpenEnquiry()}
-                className="px-5 py-2 rounded-xl text-xs xl:text-sm font-bold text-white bg-gradient-to-r from-[#087F78] to-[#12A77A] shadow-md shadow-teal-700/20 hover:shadow-lg hover:shadow-teal-700/30 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-1.5 group"
+                className="px-3 lg:px-3.5 xl:px-4 2xl:px-5 py-1.5 xl:py-2 rounded-xl text-xs xl:text-xs 2xl:text-sm font-bold text-white bg-gradient-to-r from-[#087F78] to-[#12A77A] shadow-md shadow-teal-700/20 hover:shadow-lg hover:shadow-teal-700/30 hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-1 xl:gap-1.5 group shrink-0"
               >
                 <span className="whitespace-nowrap">Enquire Now</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-3.5 h-3.5 xl:w-4 xl:h-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
 
