@@ -671,8 +671,14 @@ class CMSStore {
 
   // Lead / Enquiry CRM
   public addLead(leadData: { name: string; phone: string; email?: string; courseInterested?: string; preferredBatch?: string; message?: string; source?: Lead['source'] }): Lead {
+    // Derive next ID from the highest existing lead number, not array length,
+    // so that IDs remain unique even after deletions.
+    const maxId = this.state.leads.reduce((max, l) => {
+      const num = parseInt(l.id.replace('LEAD-', ''), 10);
+      return isNaN(num) ? max : Math.max(max, num);
+    }, 1000);
     const newLead: Lead = {
-      id: `LEAD-${(1000 + this.state.leads.length + 1).toString()}`,
+      id: `LEAD-${maxId + 1}`,
       name: leadData.name,
       phone: leadData.phone,
       email: leadData.email,

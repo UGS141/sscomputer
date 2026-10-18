@@ -51,7 +51,31 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   // Notifications Popover
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(3);
+
+  // Persist which lead IDs the admin has explicitly acknowledged (marked as read).
+  // Stored in localStorage so the badge does not reset to 3 on remount.
+  const NOTIF_READ_KEY = 'ssci_notif_read_ids';
+  const getReadIds = (): Set<string> => {
+    try {
+      const raw = localStorage.getItem(NOTIF_READ_KEY);
+      return raw ? new Set<string>(JSON.parse(raw)) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  };
+  const saveReadIds = (ids: Set<string>) => {
+    try {
+      localStorage.setItem(NOTIF_READ_KEY, JSON.stringify([...ids]));
+    } catch { /* noop */ }
+  };
+
+  // Count of New-status leads that the admin has not yet acknowledged.
+  const computeUnreadCount = (): number => {
+    const readIds = getReadIds();
+    return cmsStore.getLeads().filter((l) => l.status === 'New' && !readIds.has(l.id)).length;
+  };
+
+  const [unreadCount, setUnreadCount] = useState<number>(computeUnreadCount);
 
   // Profile Popover
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -84,10 +108,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     };
   }, [location.pathname, navigate]);
 
+  // Reactive sidebar badge for "Leads & Enquiries" — count of New-status leads.
+  // Must be state (not derived inline) so the sidebar Link re-renders on store changes.
+  const [navLeadBadge, setNavLeadBadge] = useState<number>(
+    () => cmsStore.getLeads().filter((l) => l.status === 'New').length
+  );
+
   // Subscribe to CMS Store updates
   useEffect(() => {
     const unsubscribe = cmsStore.subscribe(() => {
       setCurrentUser(cmsStore.getCurrentUser());
+      // Recompute both the bell badge and the sidebar badge on every store update
+      setUnreadCount(computeUnreadCount());
+      setNavLeadBadge(cmsStore.getLeads().filter((l) => l.status === 'New').length);
     });
     return unsubscribe;
   }, []);
@@ -137,7 +170,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     {
       title: 'CRM & ADMISSIONS',
       items: [
-        { label: 'Leads & Enquiries', path: '/admin/enquiries', icon: Inbox, badge: cmsStore.getLeads().filter(l => l.status === 'New').length },
+        { label: 'Leads & Enquiries', path: '/admin/enquiries', icon: Inbox, badge: navLeadBadge },
         { label: 'Students Roster', path: '/admin/students', icon: Users },
       ],
     },
@@ -439,31 +472,52 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   )}
                 </button>
 
-                {isNotificationsOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-teal-100 py-2 z-50 animate-fadeIn">
-                    <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-[#123B3A]">System Alerts</h4>
-                      <button
-                        onClick={() => setUnreadCount(0)}
-                        className="text-[10px] text-[#087F78] font-semibold hover:underline"
-                      >
-                        Mark read
-                      </button>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto divide-y divide-gray-50">
-                      {cmsStore.getLeads().slice(0, 3).map((lead, idx) => (
-                        <div key={idx} className="p-3 hover:bg-teal-50/50 transition-colors flex items-start gap-2.5">
-                          <div className="w-2 h-2 rounded-full bg-[#F97316] mt-1.5 shrink-0" />
-                          <div>
-                            <p className="text-xs font-bold text-[#123B3A]">New Website Enquiry</p>
-                            <p className="text-[11px] text-gray-600">{lead.name} requested details for {lead.courseInterested}.</p>
-                            <span className="text-[10px] text-gray-400 block mt-1">{new Date(lead.createdAt).toLocaleTimeString()}</span>
-                          </div>
+                {isNotificationsOpen && (() => {
+                    const readIds = getReadIds();
+                    const unreadLeads = cmsStore.getLeads().filter(
+                      (l) => l.status === 'New' && !readIds.has(l.id)
+                    );
+                    return (
+                      <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-teal-100 py-2 z-50 animate-fadeIn">
+                        <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-[#123B3A]">System Alerts</h4>
+                          <button
+                            onClick={() => {
+                              // Persist every current New-lead ID as acknowledged
+                              const allNewIds = new Set(getReadIds());
+                              cmsStore.getLeads()
+                                .filter((l) => l.status === 'New')
+                                .forEach((l) => allNewIds.add(l.id));
+                              saveReadIds(allNewIds);
+                              setUnreadCount(0);
+                            }}
+                            className="text-[10px] text-[#087F78] font-semibold hover:underline"
+                          >
+                            Mark all read
+                          </button>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                        <div className="max-h-64 overflow-y-auto divide-y divide-gray-50">
+                          {unreadLeads.length === 0 ? (
+                            <div className="p-6 text-center text-xs text-gray-400">
+                              All caught up — no unread notifications.
+                            </div>
+                          ) : (
+                            unreadLeads.slice(0, 5).map((lead) => (
+                              <div key={lead.id} className="p-3 hover:bg-teal-50/50 transition-colors flex items-start gap-2.5">
+                                <div className="w-2 h-2 rounded-full bg-[#F97316] mt-1.5 shrink-0" />
+                                <div>
+                                  <p className="text-xs font-bold text-[#123B3A]">New Website Enquiry</p>
+                                  <p className="text-[11px] text-gray-600">{lead.name} requested details for {lead.courseInterested}.</p>
+                                  <span className="text-[10px] text-gray-400 block mt-1">{new Date(lead.createdAt).toLocaleTimeString()}</span>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()
+                }
               </div>
 
               {/* Profile Dropdown */}
