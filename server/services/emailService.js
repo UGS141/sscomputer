@@ -33,7 +33,7 @@ export const getEmailConfig = () => {
     teamEmail:
       process.env.CONSULTANCY_TEAM_EMAIL?.trim() ||
       process.env.ADMIN_EMAIL?.trim() ||
-      'admissions@sscomputerinstitute.com',
+      'sscomputerinstitutenlr@gmail.com, ugssolutions1@gmail.com',
     fromEmail:
       process.env.EMAIL_FROM?.trim() ||
       '"Sri Shanmukha Computer Institute" <admissions@sscomputerinstitute.com>',
@@ -105,12 +105,29 @@ const getTransporter = (config) => {
   return cachedTransporter;
 };
 
+export const normalizeRecipients = (to) => {
+  if (Array.isArray(to)) return to.map((s) => String(s).trim()).filter(Boolean);
+  if (typeof to === 'string') return to.split(',').map((s) => s.trim()).filter(Boolean);
+  return [];
+};
+
 /**
  * Send an email directly via the configured provider (SMTP or Resend API)
  */
 export const sendRawEmail = async ({ to, subject, html, text }) => {
   const config = getEmailConfig();
   const status = getEmailProviderStatus();
+  const recipients = normalizeRecipients(to);
+  const recipientStr = recipients.join(', ');
+
+  if (recipients.length === 0) {
+    return {
+      success: false,
+      status: 'skipped',
+      error: 'No valid recipient email address specified.',
+      recipient: '',
+    };
+  }
 
   if (!status.isConfigured) {
     const errorMsg =
@@ -122,7 +139,7 @@ export const sendRawEmail = async ({ to, subject, html, text }) => {
       success: false,
       status: 'skipped',
       error: errorMsg,
-      recipient: Array.isArray(to) ? to.join(', ') : to,
+      recipient: recipientStr,
     };
   }
 
@@ -136,7 +153,7 @@ export const sendRawEmail = async ({ to, subject, html, text }) => {
       },
       body: JSON.stringify({
         from: config.fromEmail,
-        to: Array.isArray(to) ? to : [to],
+        to: recipients,
         subject,
         html,
         text,
@@ -152,7 +169,7 @@ export const sendRawEmail = async ({ to, subject, html, text }) => {
       success: true,
       status: 'sent',
       messageId: data.id || `resend-${Date.now()}`,
-      recipient: Array.isArray(to) ? to.join(', ') : to,
+      recipient: recipientStr,
       sentAt: new Date(),
     };
   }
@@ -161,7 +178,7 @@ export const sendRawEmail = async ({ to, subject, html, text }) => {
   const transporter = getTransporter(config);
   const info = await transporter.sendMail({
     from: config.fromEmail,
-    to,
+    to: recipientStr,
     subject,
     html,
     text,
@@ -171,7 +188,7 @@ export const sendRawEmail = async ({ to, subject, html, text }) => {
     success: true,
     status: 'sent',
     messageId: info.messageId || `smtp-${Date.now()}`,
-    recipient: Array.isArray(to) ? to.join(', ') : to,
+    recipient: recipientStr,
     sentAt: new Date(),
   };
 };

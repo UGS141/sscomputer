@@ -17,9 +17,9 @@ services:
       - key: FRONTEND_URL
         value: https://sscomputerinstitute.com
       - key: CONSULTANCY_TEAM_EMAIL
-        sync: false
+        value: sscomputerinstitutenlr@gmail.com, ugssolutions1@gmail.com
       - key: EMAIL_FROM
-        sync: false
+        value: '"Sri Shanmukha Computer Institute" <sscomputerinstitutenlr@gmail.com>'
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
