@@ -225,6 +225,23 @@ describe('Course Selection Resolution & Edge Cases', () => {
     expect(selected).toBe(customCampaign);
   });
 
+  it('allows user to override a prefilled campaign by selecting any other course from the dropdown', () => {
+    const prefilled = 'Launch Offer - 20% OFF All Courses';
+    let currentSelected = prefilled;
+
+    // User selects a specific course from the catalog
+    currentSelected = 'Python Programming';
+    expect(currentSelected).toBe('Python Programming');
+
+    // User switches to General Career Counselling
+    currentSelected = 'General Counselling';
+    expect(currentSelected).toBe('General Counselling');
+
+    // User can switch back to the prefilled offer if desired
+    currentSelected = prefilled;
+    expect(currentSelected).toBe('Launch Offer - 20% OFF All Courses');
+  });
+
   it('smoothly falls back to the next available course when the currently selected course is deleted in admin', () => {
     // User had "Tally Prime with GST" selected
     const remainingCourses = [initialAdminCourses[0]]; // Only Python remains

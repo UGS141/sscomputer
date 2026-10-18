@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, CheckCircle2, MessageSquare, Send, Loader2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { generateWhatsAppUrl } from '../../config/site';
@@ -30,22 +30,35 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
   const [showCelebration, setShowCelebration] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Synchronize prefilledCourse or initial course from admin-managed catalog
+  // Track the last applied prefilledCourse so it only initializes once upon opening or when the prop changes
+  const lastPrefilledRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
-    if (prefilledCourse) {
-      setFormData((prev) => ({ ...prev, courseInterested: prefilledCourse }));
-    } else if (!formData.courseInterested && courses.length > 0) {
-      setFormData((prev) => ({ ...prev, courseInterested: courses[0].title }));
-    } else if (
-      formData.courseInterested &&
-      courses.length > 0 &&
-      formData.courseInterested !== 'General Counselling' &&
-      !courses.some((c) => c.title === formData.courseInterested)
-    ) {
-      // If the previously selected course was edited/removed in admin, update to first available course
-      setFormData((prev) => ({ ...prev, courseInterested: courses[0].title }));
+    if (isOpen) {
+      if (prefilledCourse !== lastPrefilledRef.current) {
+        lastPrefilledRef.current = prefilledCourse;
+        if (prefilledCourse) {
+          setFormData((prev) => ({ ...prev, courseInterested: prefilledCourse }));
+        } else if (courses.length > 0) {
+          setFormData((prev) => ({ ...prev, courseInterested: courses[0].title }));
+        }
+      }
+    } else {
+      lastPrefilledRef.current = undefined;
     }
-  }, [prefilledCourse, courses, formData.courseInterested]);
+  }, [isOpen, prefilledCourse, courses]);
+
+  // If courses load dynamically after opening without a prefilled course, select the first available course
+  useEffect(() => {
+    if (isOpen && !prefilledCourse && courses.length > 0) {
+      setFormData((prev) => {
+        if (!prev.courseInterested) {
+          return { ...prev, courseInterested: courses[0].title };
+        }
+        return prev;
+      });
+    }
+  }, [isOpen, prefilledCourse, courses]);
 
   if (!isOpen) return null;
 
@@ -82,11 +95,12 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
     setSubmitted(false);
     setShowCelebration(false);
     setErrorMsg('');
+    lastPrefilledRef.current = undefined;
     setFormData({
       name: '',
       phone: '',
       email: '',
-      courseInterested: courses.length > 0 ? courses[0].title : '',
+      courseInterested: '',
       preferredTiming: 'Morning (10 AM - 12 PM)',
       message: '',
     });
@@ -242,6 +256,16 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
                       {prefilledCourse}
                     </option>
                   )}
+
+                  {/* Show current selected course if custom and not in courses or prefilledCourse */}
+                  {formData.courseInterested &&
+                    formData.courseInterested !== prefilledCourse &&
+                    formData.courseInterested !== 'General Counselling' &&
+                    !courses.some((c) => c.title === formData.courseInterested) && (
+                      <option value={formData.courseInterested}>
+                        {formData.courseInterested}
+                      </option>
+                    )}
 
                   {courses.map((course) => (
                     <option key={course.slug || course.title} value={course.title}>

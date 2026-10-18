@@ -61,6 +61,11 @@ export const App: React.FC = () => {
     setIsEnquiryOpen(true);
   };
 
+  const handleCloseEnquiry = () => {
+    setIsEnquiryOpen(false);
+    setSelectedCourseForEnquiry(undefined);
+  };
+
   React.useEffect(() => {
     if (!LAUNCH_OFFER_CONFIG.enabled) return;
 
@@ -182,7 +187,7 @@ export const App: React.FC = () => {
 
               <EnquiryModal
                 isOpen={isEnquiryOpen}
-                onClose={() => setIsEnquiryOpen(false)}
+                onClose={handleCloseEnquiry}
                 prefilledCourse={selectedCourseForEnquiry}
               />
 
