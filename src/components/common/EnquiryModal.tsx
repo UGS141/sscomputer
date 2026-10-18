@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle2, MessageSquare, Send, Loader2 } from 'lucide-react';
-import { COURSES_DATA } from '../../data/courses';
 import { apiService } from '../../services/api';
 import { generateWhatsAppUrl } from '../../config/site';
 import { trackSEOEvent } from '../../seo/analytics';
 import { cmsStore } from '../../admin/cmsStore';
+import { useAdminCourses } from '../../hooks/useAdminCourses';
 import { SuccessConfetti } from './SuccessConfetti';
 
 interface EnquiryModalProps {
@@ -14,11 +14,13 @@ interface EnquiryModalProps {
 }
 
 export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, prefilledCourse }) => {
+  const { courses, loading: coursesLoading, error: coursesError } = useAdminCourses();
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     email: '',
-    courseInterested: prefilledCourse || 'MS Office & Computer Fundamentals',
+    courseInterested: prefilledCourse || (courses.length > 0 ? courses[0].title : ''),
     preferredTiming: 'Morning (10 AM - 12 PM)',
     message: '',
   });
@@ -28,11 +30,22 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
   const [showCelebration, setShowCelebration] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Synchronize prefilledCourse or initial course from admin-managed catalog
   useEffect(() => {
     if (prefilledCourse) {
       setFormData((prev) => ({ ...prev, courseInterested: prefilledCourse }));
+    } else if (!formData.courseInterested && courses.length > 0) {
+      setFormData((prev) => ({ ...prev, courseInterested: courses[0].title }));
+    } else if (
+      formData.courseInterested &&
+      courses.length > 0 &&
+      formData.courseInterested !== 'General Counselling' &&
+      !courses.some((c) => c.title === formData.courseInterested)
+    ) {
+      // If the previously selected course was edited/removed in admin, update to first available course
+      setFormData((prev) => ({ ...prev, courseInterested: courses[0].title }));
     }
-  }, [prefilledCourse]);
+  }, [prefilledCourse, courses, formData.courseInterested]);
 
   if (!isOpen) return null;
 
@@ -43,13 +56,15 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
     setLoading(true);
     setErrorMsg('');
     try {
+      const selectedCourse = formData.courseInterested || (courses.length > 0 ? courses[0].title : 'General Counselling');
       const res = await apiService.submitEnquiry({
         ...formData,
+        courseInterested: selectedCourse,
         preferredBatch: formData.preferredTiming || 'Any Batch',
       });
 
       if (res.success) {
-        trackSEOEvent('course_enquiry', { course: formData.courseInterested });
+        trackSEOEvent('course_enquiry', { course: selectedCourse });
         cmsStore.refreshFromBackend();
         setShowCelebration(true);
         setSubmitted(true);
@@ -71,14 +86,15 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
       name: '',
       phone: '',
       email: '',
-      courseInterested: 'MS Office & Computer Fundamentals',
+      courseInterested: courses.length > 0 ? courses[0].title : '',
       preferredTiming: 'Morning (10 AM - 12 PM)',
       message: '',
     });
     onClose();
   };
 
-  const whatsappMsg = `Hello SSCI, I submitted an enquiry for ${formData.courseInterested}. My phone is ${formData.phone}. Please share batch details.`;
+  const currentCourseInterested = formData.courseInterested || (courses.length > 0 ? courses[0].title : 'General Counselling');
+  const whatsappMsg = `Hello SSCI, I submitted an enquiry for ${currentCourseInterested}. My phone is ${formData.phone}. Please share batch details.`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -194,21 +210,52 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ isOpen, onClose, pre
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#123B3A] uppercase tracking-wider mb-1">
-                  Course Interested In
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-[#123B3A] uppercase tracking-wider">
+                    Course Interested In
+                  </label>
+                  {coursesLoading && courses.length === 0 && (
+                    <span className="flex items-center gap-1 text-[11px] font-semibold text-[#087F78]">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Loading courses...
+                    </span>
+                  )}
+                </div>
                 <select
                   value={formData.courseInterested}
                   onChange={(e) => setFormData({ ...formData, courseInterested: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-[#087F78] focus:ring-2 focus:ring-teal-500/20 text-sm font-medium outline-none transition-all bg-white"
+                  disabled={coursesLoading && courses.length === 0}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-[#087F78] focus:ring-2 focus:ring-teal-500/20 text-sm font-medium outline-none transition-all bg-white disabled:bg-gray-100 disabled:text-gray-400"
                 >
-                  {COURSES_DATA.map((course) => (
-                    <option key={course.slug} value={course.title}>
-                      {course.title} ({course.duration})
+                  {coursesLoading && courses.length === 0 ? (
+                    <option value="" disabled>
+                      Loading courses from catalog...
+                    </option>
+                  ) : courses.length === 0 ? (
+                    <option value="" disabled>
+                      No courses currently available
+                    </option>
+                  ) : null}
+
+                  {/* Show prefilledCourse if it's not present in the admin catalog (e.g. custom campaign) */}
+                  {prefilledCourse && !courses.some((c) => c.title === prefilledCourse) && (
+                    <option value={prefilledCourse}>
+                      {prefilledCourse}
+                    </option>
+                  )}
+
+                  {courses.map((course) => (
+                    <option key={course.slug || course.title} value={course.title}>
+                      {course.title}{course.duration ? ` (${course.duration})` : ''}
                     </option>
                   ))}
                   <option value="General Counselling">General Career Counselling</option>
                 </select>
+
+                {coursesError && courses.length === 0 && (
+                  <p className="text-[11px] text-amber-700 mt-1">
+                    {coursesError} You can still submit an enquiry with General Career Counselling.
+                  </p>
+                )}
               </div>
 
               <div>

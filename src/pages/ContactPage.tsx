@@ -1,22 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Phone, Mail, MapPin, Clock, MessageSquare, Send, CheckCircle2, Loader2 } from 'lucide-react';
 import { SITE_CONFIG, generateWhatsAppUrl } from '../config/site';
-import { COURSES_DATA } from '../data/courses';
 import { apiService } from '../services/api';
 import { Breadcrumb } from '../components/common/Breadcrumb';
 import { SEOHead } from '../seo/SEOHead';
 import { generateLocalBusinessSchema, generateBreadcrumbSchema } from '../seo/schemas';
 import { trackSEOEvent } from '../seo/analytics';
-
 import { cmsStore } from '../admin/cmsStore';
+import { useAdminCourses } from '../hooks/useAdminCourses';
 import { SuccessConfetti } from '../components/common/SuccessConfetti';
 
 export const ContactPage: React.FC = () => {
+  const { courses, loading: coursesLoading, error: coursesError } = useAdminCourses();
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     email: '',
-    courseInterested: 'MS Office & Computer Fundamentals',
+    courseInterested: courses.length > 0 ? courses[0].title : '',
     preferredBatch: 'Morning (10:00 AM - 12:00 PM)',
     message: '',
   });
@@ -26,6 +27,20 @@ export const ContactPage: React.FC = () => {
   const [showCelebration, setShowCelebration] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Keep selected course synchronized with admin-managed catalog
+  useEffect(() => {
+    if (!formData.courseInterested && courses.length > 0) {
+      setFormData((prev) => ({ ...prev, courseInterested: courses[0].title }));
+    } else if (
+      formData.courseInterested &&
+      courses.length > 0 &&
+      formData.courseInterested !== 'General Counselling' &&
+      !courses.some((c) => c.title === formData.courseInterested)
+    ) {
+      setFormData((prev) => ({ ...prev, courseInterested: courses[0].title }));
+    }
+  }, [courses, formData.courseInterested]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.phone) return;
@@ -33,9 +48,13 @@ export const ContactPage: React.FC = () => {
     setLoading(true);
     setErrorMsg('');
     try {
-      const res = await apiService.submitEnquiry(formData);
+      const selectedCourse = formData.courseInterested || (courses.length > 0 ? courses[0].title : 'General Career Counselling');
+      const res = await apiService.submitEnquiry({
+        ...formData,
+        courseInterested: selectedCourse,
+      });
       if (res.success) {
-        trackSEOEvent('contact_form_submit', { course: formData.courseInterested });
+        trackSEOEvent('contact_form_submit', { course: selectedCourse });
         cmsStore.refreshFromBackend();
         setShowCelebration(true);
         setSubmitted(true);
@@ -211,6 +230,14 @@ export const ContactPage: React.FC = () => {
                     onClick={() => {
                       setSubmitted(false);
                       setShowCelebration(false);
+                      setFormData({
+                        name: '',
+                        phone: '',
+                        email: '',
+                        courseInterested: courses.length > 0 ? courses[0].title : '',
+                        preferredBatch: 'Morning (10:00 AM - 12:00 PM)',
+                        message: '',
+                      });
                     }}
                     className="py-2.5 px-6 rounded-xl text-xs font-bold text-white brand-gradient-bg shadow-md hover:shadow-lg transition-all"
                   >
@@ -268,20 +295,45 @@ export const ContactPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#123B3A] uppercase tracking-wider mb-1">
-                      Course Interested In
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-[#123B3A] uppercase tracking-wider">
+                        Course Interested In
+                      </label>
+                      {coursesLoading && courses.length === 0 && (
+                        <span className="flex items-center gap-1 text-[11px] font-semibold text-[#087F78]">
+                          <Loader2 className="w-3 h-3 animate-spin" /> Loading courses...
+                        </span>
+                      )}
+                    </div>
                     <select
                       value={formData.courseInterested}
                       onChange={(e) => setFormData({ ...formData, courseInterested: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-[#087F78] text-sm font-medium outline-none bg-white"
+                      disabled={coursesLoading && courses.length === 0}
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-[#087F78] text-sm font-medium outline-none bg-white disabled:bg-gray-100 disabled:text-gray-400"
                     >
-                      {COURSES_DATA.map((course) => (
-                        <option key={course.slug} value={course.title}>
-                          {course.title} ({course.duration})
+                      {coursesLoading && courses.length === 0 ? (
+                        <option value="" disabled>
+                          Loading courses from catalog...
+                        </option>
+                      ) : courses.length === 0 ? (
+                        <option value="" disabled>
+                          No courses currently available
+                        </option>
+                      ) : null}
+
+                      {courses.map((course) => (
+                        <option key={course.slug || course.title} value={course.title}>
+                          {course.title}{course.duration ? ` (${course.duration})` : ''}
                         </option>
                       ))}
+                      <option value="General Counselling">General Career Counselling</option>
                     </select>
+
+                    {coursesError && courses.length === 0 && (
+                      <p className="text-[11px] text-amber-700 mt-1">
+                        {coursesError} You can still submit an enquiry with General Career Counselling.
+                      </p>
+                    )}
                   </div>
 
                   <div>
