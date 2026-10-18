@@ -383,7 +383,10 @@ class CMSStore {
       if (stored) {
         const parsed = JSON.parse(stored);
         const settings = parsed.settings || defaultInitialState.settings;
-        if (settings?.social?.instagram === 'https://www.instagram.com/sscomputerinstitutenlr?srtk=MWsyaHcycjJqYmt2dQ==') {
+        if (
+          settings?.social?.instagram?.includes('ssci_official') ||
+          settings?.social?.instagram?.includes('srtk=MWsyaHcycjJqYmt2dQ==')
+        ) {
           settings.social.instagram = SITE_CONFIG.social.instagram;
         }
         this.state = {

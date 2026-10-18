@@ -11,7 +11,7 @@ export const SITE_CONFIG = {
     mapEmbedUrl: 'https://maps.google.com/?q=Dargamitta,Nellore'
   },
   social: {
-    instagram: 'https://www.instagram.com/sscomputerinstitutenlr?srtk=MWsyaHcycjJqYmt2dQ==',
+    instagram: 'https://www.instagram.com/sscomputerinstitutenlr?srtk=MWsyaHcycjJqYmt2dQ%3D%3D',
     facebook: 'https://facebook.com',
     youtube: 'https://youtube.com',
     linkedin: 'https://linkedin.com'

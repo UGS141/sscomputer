@@ -4,7 +4,11 @@ import { cmsStore } from '../../admin/cmsStore';
 import { trackSEOEvent } from '../../seo/analytics';
 
 const resolveInstagramUrl = (url?: string) => {
-  if (!url || url === 'https://www.instagram.com/sscomputerinstitutenlr?srtk=MWsyaHcycjJqYmt2dQ==') {
+  if (
+    !url ||
+    url.includes('ssci_official') ||
+    url.includes('srtk=MWsyaHcycjJqYmt2dQ==')
+  ) {
     return SITE_CONFIG.social.instagram;
   }
   return url;
