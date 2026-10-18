@@ -113,7 +113,7 @@ export const LaunchOfferModal: React.FC<LaunchOfferModalProps> = ({
           {/* Footer Note */}
           <p className="text-[11px] font-medium text-gray-400 flex items-center justify-center gap-1">
             <Tag className="w-3 h-3 text-[#087F78]" />
-            <span>Offer valid for one week from launch • T&C Apply</span>
+            <span>Limited time launch offer • T&C Apply</span>
           </p>
         </div>
       </div>

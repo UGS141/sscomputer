@@ -5,9 +5,9 @@ export interface LaunchOfferConfig {
   subtitle: string;
   description: string;
   /**
-   * Fixed campaign duration: 14 days
+   * Fixed campaign duration
    * Start: '2026-10-04T00:00:00+05:30'
-   * Expiry: '2026-10-18T23:59:59+05:30'
+   * Expiry: '2026-12-05T23:59:59+05:30' (48 days from Oct 18, 2026)
    */
   startAt: string;
   expiresAt: string;
@@ -20,8 +20,9 @@ export const LAUNCH_OFFER_CONFIG: LaunchOfferConfig = {
   title: '20% OFF ON ALL COURSES',
   subtitle: 'LIMITED TIME OFFER',
   description: 'Celebrate our launch with an exclusive offer on every course.',
-  // Fixed 14-day campaign timestamps
+  // Fixed campaign timestamps (extended by 48 days)
   startAt: '2026-10-04T00:00:00+05:30',
-  expiresAt: '2026-10-18T23:59:59+05:30',
+  expiresAt: '2026-12-05T23:59:59+05:30',
   ctaText: 'Register Now',
 };
+
