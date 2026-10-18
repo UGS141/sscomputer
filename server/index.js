@@ -22,6 +22,11 @@ import { HeroContent } from './models/HeroContent.js';
 import { Announcement } from './models/Announcement.js';
 import { FloatingSkill } from './models/FloatingSkill.js';
 import { AuditLog } from './models/AuditLog.js';
+import {
+  processLeadNotifications,
+  retryLeadNotifications,
+  getEmailProviderStatus,
+} from './services/emailService.js';
 
 dotenv.config();
 
@@ -302,10 +307,127 @@ app.post('/api/leads', leadLimiter, async (req, res) => {
     });
 
     await logAudit('Visitor', 'NEW_ENQUIRY', 'CRM', `New enquiry from ${newLead.name} (${newLead.phone}).`);
-    res.json({ success: true, lead: newLead, message: 'Thank you for your enquiry! We will contact you shortly.' });
+
+    // Trigger transactional email notifications (Internal Team Alert + Lead Confirmation)
+    // Run after lead is saved in DB. Provider errors are caught and recorded without losing the lead.
+    try {
+      const emailResults = await processLeadNotifications(newLead);
+      const timelineUpdates = [];
+
+      if (emailResults.teamNotification) {
+        if (emailResults.teamNotification.status === 'sent') {
+          timelineUpdates.push({
+            id: `t-${Date.now()}-tn-sent`,
+            title: 'Team Notification Sent',
+            description: `Notification email sent to consultancy team (${emailResults.teamNotification.recipient}).`,
+            timestamp: new Date().toISOString(),
+            type: 'system',
+          });
+        } else if (emailResults.teamNotification.status === 'failed') {
+          timelineUpdates.push({
+            id: `t-${Date.now()}-tn-err`,
+            title: 'Team Notification Failed',
+            description: `Email delivery failed: ${emailResults.teamNotification.error || 'Provider failure'}`,
+            timestamp: new Date().toISOString(),
+            type: 'system',
+          });
+        }
+      }
+
+      if (emailResults.leadConfirmation) {
+        if (emailResults.leadConfirmation.status === 'sent') {
+          timelineUpdates.push({
+            id: `t-${Date.now()}-lc-sent`,
+            title: 'Lead Confirmation Sent',
+            description: `Confirmation email dispatched to candidate (${emailResults.leadConfirmation.recipient}).`,
+            timestamp: new Date().toISOString(),
+            type: 'system',
+          });
+        } else if (emailResults.leadConfirmation.status === 'failed') {
+          timelineUpdates.push({
+            id: `t-${Date.now()}-lc-err`,
+            title: 'Lead Confirmation Failed',
+            description: `Confirmation email failed: ${emailResults.leadConfirmation.error || 'Provider failure'}`,
+            timestamp: new Date().toISOString(),
+            type: 'system',
+          });
+        }
+      }
+
+      newLead.emailDelivery = emailResults;
+      if (timelineUpdates.length > 0) {
+        newLead.timeline.unshift(...timelineUpdates);
+      }
+      await newLead.save();
+    } catch (emailErr) {
+      console.error('[LeadEmailNotification] Background error processing notifications:', emailErr);
+    }
+
+    res.json({
+      success: true,
+      lead: newLead,
+      emailDelivery: newLead.emailDelivery,
+      message: 'Thank you for your enquiry! We will contact you shortly.',
+    });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
+});
+
+// Retry Email Notifications for an Existing Lead (Idempotent: skips already sent emails)
+app.post('/api/leads/:id/retry-email', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const lead = await Lead.findOne({ id: req.params.id });
+    if (!lead) {
+      return res.status(404).json({ success: false, message: 'Lead enquiry record not found.' });
+    }
+
+    const emailResults = await retryLeadNotifications(lead);
+    const timelineUpdates = [];
+
+    if (emailResults.teamNotification?.status === 'sent' && lead.emailDelivery?.teamNotification?.status !== 'sent') {
+      timelineUpdates.push({
+        id: `t-${Date.now()}-tn-retry`,
+        title: 'Team Notification Sent (Retry)',
+        description: `Notification dispatched to ${emailResults.teamNotification.recipient}.`,
+        timestamp: new Date().toISOString(),
+        type: 'system',
+      });
+    }
+
+    if (emailResults.leadConfirmation?.status === 'sent' && lead.emailDelivery?.leadConfirmation?.status !== 'sent') {
+      timelineUpdates.push({
+        id: `t-${Date.now()}-lc-retry`,
+        title: 'Lead Confirmation Sent (Retry)',
+        description: `Confirmation email dispatched to ${emailResults.leadConfirmation.recipient}.`,
+        timestamp: new Date().toISOString(),
+        type: 'system',
+      });
+    }
+
+    lead.emailDelivery = emailResults;
+    if (timelineUpdates.length > 0) {
+      lead.timeline.unshift(...timelineUpdates);
+    }
+    await lead.save();
+
+    await logAudit(req.user.name, 'RETRY_LEAD_EMAIL', 'CRM', `Retried email notifications for lead "${lead.id}".`);
+
+    res.json({
+      success: true,
+      lead,
+      emailDelivery: lead.emailDelivery,
+      message: 'Email notification retry processed.',
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Check Email Provider Configuration Status
+app.get('/api/email/status', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), (req, res) => {
+  const status = getEmailProviderStatus();
+  res.json({ success: true, status });
 });
 
 app.put('/api/leads/:id/status', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {

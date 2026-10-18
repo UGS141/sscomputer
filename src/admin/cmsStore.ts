@@ -37,6 +37,22 @@ export interface LeadTimelineEvent {
   type: 'system' | 'call' | 'whatsapp' | 'note' | 'status_change';
 }
 
+export interface EmailDeliveryDetail {
+  status: 'pending' | 'sent' | 'failed' | 'skipped';
+  recipient?: string;
+  sentAt?: string;
+  error?: string;
+  messageId?: string;
+  attempts?: number;
+  lastAttemptAt?: string;
+  skippedReason?: string;
+}
+
+export interface LeadEmailDelivery {
+  teamNotification?: EmailDeliveryDetail;
+  leadConfirmation?: EmailDeliveryDetail;
+}
+
 export interface Lead {
   id: string;
   name: string;
@@ -53,6 +69,7 @@ export interface Lead {
   notes: LeadNote[];
   followUpDate?: string;
   timeline: LeadTimelineEvent[];
+  emailDelivery?: LeadEmailDelivery;
 }
 
 export interface Student {
@@ -779,6 +796,20 @@ class CMSStore {
     this.logAudit(this.getUserName(), 'DELETE_LEAD', 'CRM', `Deleted lead enquiry "${id}" (${targetName}).`);
     this.saveToStorage();
     return true;
+  }
+
+  public async retryLeadEmail(id: string) {
+    const res = await apiService.retryLeadEmail(id);
+    if (res?.success && res.lead) {
+      const idx = this.state.leads.findIndex((l) => l.id === id);
+      if (idx >= 0) {
+        this.state.leads[idx] = res.lead;
+      }
+      this.logAudit(this.getUserName(), 'RETRY_LEAD_EMAIL', 'CRM', `Retried email notification for lead "${id}".`);
+      this.saveToStorage();
+      return res.lead;
+    }
+    throw new Error(res?.message || 'Failed to retry email notification.');
   }
 
   public async convertLeadToStudent(id: string) {

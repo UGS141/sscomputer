@@ -39,6 +39,36 @@ const leadSchema = new mongoose.Schema(
         type: { type: String },
       },
     ],
+    emailDelivery: {
+      teamNotification: {
+        status: {
+          type: String,
+          enum: ['pending', 'sent', 'failed', 'skipped'],
+          default: 'pending',
+        },
+        recipient: { type: String },
+        sentAt: { type: Date },
+        error: { type: String },
+        messageId: { type: String },
+        attempts: { type: Number, default: 0 },
+        lastAttemptAt: { type: Date },
+        skippedReason: { type: String },
+      },
+      leadConfirmation: {
+        status: {
+          type: String,
+          enum: ['pending', 'sent', 'failed', 'skipped'],
+          default: 'pending',
+        },
+        recipient: { type: String },
+        sentAt: { type: Date },
+        error: { type: String },
+        messageId: { type: String },
+        attempts: { type: Number, default: 0 },
+        lastAttemptAt: { type: Date },
+        skippedReason: { type: String },
+      },
+    },
   },
   { timestamps: true }
 );

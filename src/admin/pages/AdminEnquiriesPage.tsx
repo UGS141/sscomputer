@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Inbox,
   Search,
@@ -18,11 +19,13 @@ import {
   Send,
   Sparkles,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  RefreshCw,
 } from 'lucide-react';
 import { cmsStore, type Lead } from '../cmsStore';
 
 export const AdminEnquiriesPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [leads, setLeads] = useState<Lead[]>(cmsStore.getLeads());
   const [activeTab, setActiveTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,6 +36,8 @@ export const AdminEnquiriesPage: React.FC = () => {
   const [noteInput, setNoteInput] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const [emailRetrying, setEmailRetrying] = useState(false);
 
   useEffect(() => {
     const unsubscribe = cmsStore.subscribe(() => {
@@ -45,9 +50,34 @@ export const AdminEnquiriesPage: React.FC = () => {
     return unsubscribe;
   }, [selectedLead]);
 
+  // Auto-select lead if query param ?id=... is present in URL (e.g., from team email notification link)
+  useEffect(() => {
+    const urlLeadId = searchParams.get('id');
+    if (urlLeadId && leads.length > 0) {
+      const match = leads.find((l) => l.id === urlLeadId);
+      if (match) {
+        setSelectedLead(match);
+      }
+    }
+  }, [searchParams, leads]);
+
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 4000);
+  };
+
+  const handleRetryEmail = async () => {
+    if (!selectedLead) return;
+    setEmailRetrying(true);
+    try {
+      const updated = await cmsStore.retryLeadEmail(selectedLead.id);
+      setSelectedLead(updated);
+      showNotification('success', 'Email notification retry completed.');
+    } catch (err: any) {
+      showNotification('error', err.message || 'Failed to retry email notifications.');
+    } finally {
+      setEmailRetrying(false);
+    }
   };
 
   const filteredLeads = leads.filter((l) => {
@@ -405,6 +435,83 @@ export const AdminEnquiriesPage: React.FC = () => {
                     "{selectedLead.message}"
                   </p>
                 )}
+              </div>
+
+              {/* Transactional Email Delivery Status */}
+              <div className="p-4 rounded-2xl bg-teal-50/40 border border-teal-100/70 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#123B3A]">
+                    <Mail className="w-3.5 h-3.5 text-[#087F78]" />
+                    <span>Email Notifications</span>
+                  </div>
+                  <button
+                    onClick={handleRetryEmail}
+                    disabled={emailRetrying}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-teal-200 text-[#087F78] hover:bg-teal-50 text-[11px] font-bold shadow-2xs transition-colors disabled:opacity-50"
+                    title="Retry sending failed or pending email notifications"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${emailRetrying ? 'animate-spin' : ''}`} />
+                    <span>{emailRetrying ? 'Retrying...' : 'Retry Email'}</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 text-[11px]">
+                  {/* Team Notification Item */}
+                  <div className="p-2.5 rounded-xl bg-white border border-teal-100/60 flex items-start justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <p className="font-bold text-[#123B3A]">Consultancy Team Alert</p>
+                      <p className="text-gray-500 text-[10px]">
+                        {selectedLead.emailDelivery?.teamNotification?.recipient || 'Configured Team Inbox'}
+                      </p>
+                      {selectedLead.emailDelivery?.teamNotification?.error && (
+                        <p className="text-red-600 text-[10px] font-medium">
+                          {selectedLead.emailDelivery.teamNotification.error}
+                        </p>
+                      )}
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase shrink-0 ${
+                        selectedLead.emailDelivery?.teamNotification?.status === 'sent'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : selectedLead.emailDelivery?.teamNotification?.status === 'failed'
+                          ? 'bg-red-100 text-red-800'
+                          : selectedLead.emailDelivery?.teamNotification?.status === 'skipped'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {selectedLead.emailDelivery?.teamNotification?.status || 'Pending'}
+                    </span>
+                  </div>
+
+                  {/* Lead Confirmation Item */}
+                  <div className="p-2.5 rounded-xl bg-white border border-teal-100/60 flex items-start justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <p className="font-bold text-[#123B3A]">Lead Confirmation Email</p>
+                      <p className="text-gray-500 text-[10px]">
+                        {selectedLead.email ? selectedLead.email : 'No email provided by lead'}
+                      </p>
+                      {selectedLead.emailDelivery?.leadConfirmation?.error && (
+                        <p className="text-red-600 text-[10px] font-medium">
+                          {selectedLead.emailDelivery.leadConfirmation.error}
+                        </p>
+                      )}
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase shrink-0 ${
+                        selectedLead.emailDelivery?.leadConfirmation?.status === 'sent'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : selectedLead.emailDelivery?.leadConfirmation?.status === 'failed'
+                          ? 'bg-red-100 text-red-800'
+                          : selectedLead.emailDelivery?.leadConfirmation?.status === 'skipped'
+                          ? 'bg-gray-100 text-gray-600'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {selectedLead.emailDelivery?.leadConfirmation?.status || (!selectedLead.email ? 'Skipped' : 'Pending')}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* Add Note Form */}

@@ -137,6 +137,12 @@ export const apiService = {
   deleteLead: async (id: string) => {
     return await apiService.request(`/api/leads/${encodeURIComponent(id)}`, 'DELETE');
   },
+  retryLeadEmail: async (id: string) => {
+    return await apiService.request(`/api/leads/${encodeURIComponent(id)}/retry-email`, 'POST');
+  },
+  getEmailStatus: async () => {
+    return await apiService.request('/api/email/status');
+  },
   getCertificates: async () => {
     return await apiService.request('/api/certificates');
   },

@@ -104,6 +104,7 @@ export const App: React.FC = () => {
                 <Route path="/courses/edit/:slug" element={<AdminCourseEditorPage />} />
                 <Route path="/batches" element={<AdminBatchesPage />} />
                 <Route path="/enquiries" element={<AdminEnquiriesPage />} />
+                <Route path="/leads" element={<AdminEnquiriesPage />} />
                 <Route path="/students" element={<AdminStudentsPage />} />
                 <Route path="/trainers" element={<AdminTrainersPage />} />
                 <Route path="/blog" element={<AdminContentPage />} />
