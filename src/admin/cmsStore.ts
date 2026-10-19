@@ -72,6 +72,17 @@ export interface Lead {
   emailDelivery?: LeadEmailDelivery;
 }
 
+export interface EnrolledCourseSummary {
+  id: string;
+  courseSlug: string;
+  courseTitle: string;
+  batchId?: string;
+  batchName?: string;
+  status: string;
+  attendancePercentage: number;
+  learningProgressPercentage: number;
+}
+
 export interface Student {
   id: string;
   studentId: string;
@@ -84,6 +95,11 @@ export interface Student {
   status: 'Enquiry' | 'Registered' | 'Active' | 'Completed' | 'Alumni';
   grade?: string;
   certificatesIssued: string[];
+  enrollments?: Enrollment[];
+  enrolledCourses?: EnrolledCourseSummary[];
+  activeCoursesCount?: number;
+  averageAttendancePercentage?: number;
+  averageLearningProgressPercentage?: number;
 }
 
 export interface CertificateRecord {
@@ -97,6 +113,17 @@ export interface CertificateRecord {
   status: 'Valid' | 'Revoked';
 }
 
+export interface BatchTransferRecord {
+  fromBatchId: string;
+  fromBatchName: string;
+  toBatchId: string;
+  toBatchName: string;
+  transferredAt: string;
+  effectiveDate?: string;
+  reason?: string;
+  transferredBy?: string;
+}
+
 export interface Enrollment {
   id: string;
   studentId: string;
@@ -105,6 +132,8 @@ export interface Enrollment {
   studentEmail?: string;
   courseSlug: string;
   courseTitle: string;
+  batchId?: string;
+  batchName?: string;
   enrollmentDate?: string;
   status: 'Active' | 'Completed' | 'Withdrawn' | 'Suspended';
   applicableFee?: number;
@@ -116,6 +145,7 @@ export interface Enrollment {
   completedAt?: string;
   withdrawnAt?: string;
   withdrawalReason?: string;
+  transferHistory?: BatchTransferRecord[];
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -125,6 +155,8 @@ export interface CourseSession {
   id: string;
   courseSlug: string;
   courseTitle?: string;
+  batchId?: string;
+  batchName?: string;
   sessionNumber: number;
   title: string;
   date: string; // YYYY-MM-DD
@@ -790,6 +822,7 @@ class CMSStore {
     } else {
       targetBatch = {
         id: batchData.id || `BATCH-${Date.now().toString().slice(-4)}`,
+        name: batchData.name,
         courseSlug: batchData.courseSlug || 'python-programming',
         courseName: batchData.courseName,
         category: batchData.category || 'Programming',
@@ -798,10 +831,19 @@ class CMSStore {
         timing: (batchData.timing as any) || 'Morning',
         timeRange: batchData.timeRange || '10:00 AM – 12:00 PM',
         startDate: batchData.startDate || 'Next Monday',
+        endDate: batchData.endDate,
+        weekdays: batchData.weekdays,
+        startTime: batchData.startTime,
+        endTime: batchData.endTime,
+        sessionDurationMinutes: batchData.sessionDurationMinutes,
+        timezone: batchData.timezone,
+        room: batchData.room,
+        capacity: batchData.capacity,
+        academicStatus: batchData.academicStatus || 'Draft',
         mode: batchData.mode || 'Practical Lab',
         status: (batchData.status as any) || 'Starting Soon',
-        totalSeats: batchData.totalSeats ?? 20,
-        filledSeats: batchData.filledSeats ?? 10,
+        totalSeats: batchData.totalSeats ?? batchData.capacity ?? 20,
+        filledSeats: batchData.filledSeats ?? 0,
         trainerName: batchData.trainerName || 'Senior SSCI Faculty'
       };
     }
@@ -1140,6 +1182,41 @@ class CMSStore {
       throw new Error(res?.message || 'Failed to delete enrollment.');
     }
     this.state.enrollments = this.state.enrollments.filter((e) => e.id !== id);
+    this.saveToStorage();
+    return res;
+  }
+
+  public async enrollBatchStudents(batchId: string, payload: {
+    studentIds: string[];
+    applicableFee?: number;
+    discount?: number;
+    feeStatus?: string;
+    notes?: string;
+  }) {
+    const res = await apiService.enrollBatchStudents(batchId, payload);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to enroll students into batch.');
+    }
+    if (Array.isArray(res.enrollments)) {
+      this.state.enrollments.unshift(...res.enrollments);
+    }
+    this.saveToStorage();
+    return res;
+  }
+
+  public async transferStudentBatch(enrollmentId: string, payload: {
+    toBatchId: string;
+    reason?: string;
+    effectiveDate?: string;
+  }) {
+    const res = await apiService.transferStudentBatch(enrollmentId, payload);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to transfer student.');
+    }
+    const idx = this.state.enrollments.findIndex((e) => e.id === enrollmentId);
+    if (idx >= 0 && res.enrollment) {
+      this.state.enrollments[idx] = res.enrollment;
+    }
     this.saveToStorage();
     return res;
   }

@@ -49,6 +49,7 @@ export interface CourseCompletionResult {
 
 export function formatDateStr(d: any): string;
 export function generateCourseSessions(course: any): Promise<GenerateSessionsResult>;
+export function generateBatchSessions(batch: any, course?: any): Promise<GenerateSessionsResult>;
 export function calculateEnrollmentAttendance(enrollmentId: string, courseSlug?: string, studentAdmissionDate?: string): Promise<AttendanceCalculationResult>;
 export function calculateEnrollmentProgress(enrollmentId: string, courseSlug?: string): Promise<ProgressCalculationResult>;
 export function evaluateCourseCompletion(enrollmentId: string): Promise<CourseCompletionResult>;

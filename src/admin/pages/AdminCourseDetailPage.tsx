@@ -22,9 +22,11 @@ import {
   Check,
   X,
   History,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Layers,
+  ArrowRight
 } from 'lucide-react';
-import { cmsStore, type Course, type Enrollment, type CourseSession, type AttendanceRecord } from '../cmsStore';
+import { cmsStore, type Course, type Enrollment, type CourseSession, type AttendanceRecord, type Batch } from '../cmsStore';
 import { apiService } from '../../services/api';
 import { AttendancePercentage } from '../../components/common/AttendancePercentage';
 import { ModuleProgressIndicator } from '../../components/common/ModuleProgressIndicator';
@@ -37,7 +39,8 @@ export const AdminCourseDetailPage: React.FC = () => {
   const [course, setCourse] = useState<Course | null>(null);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [sessions, setSessions] = useState<CourseSession[]>([]);
-  const [activeTab, setActiveTab] = useState<'students' | 'schedule' | 'attendance' | 'progress' | 'completion'>('students');
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [activeTab, setActiveTab] = useState<'students' | 'batches' | 'schedule' | 'attendance' | 'progress' | 'completion'>('students');
 
   // Dialog & Modal states
   const [isEnrollDialogOpen, setIsEnrollDialogOpen] = useState(false);
@@ -93,6 +96,18 @@ export const AdminCourseDetailPage: React.FC = () => {
           const upcoming = sesRes.sessions.find((s: CourseSession) => s.date >= today);
           setSelectedSessionId(upcoming ? upcoming.id : sesRes.sessions[0].id);
         }
+      }
+
+      // Fetch batches for this course
+      try {
+        const bRes = await apiService.getBatches({ courseSlug: slug });
+        if (bRes?.success && Array.isArray(bRes.batches)) {
+          setBatches(bRes.batches);
+        } else {
+          setBatches(cmsStore.getBatches().filter((b) => b.courseSlug === slug));
+        }
+      } catch (_) {
+        setBatches(cmsStore.getBatches().filter((b) => b.courseSlug === slug));
       }
     } catch (err: any) {
       showNotification('error', err?.message || 'Error loading course details.');
@@ -505,6 +520,7 @@ export const AdminCourseDetailPage: React.FC = () => {
       <div className="flex border-b border-gray-200 bg-white px-4 rounded-xl shadow-2xs gap-1 overflow-x-auto">
         {[
           { id: 'students', label: `Enrolled Students (${enrollments.length})`, icon: Users },
+          { id: 'batches', label: `Batches (${batches.length})`, icon: Layers },
           { id: 'schedule', label: `Schedule & Sessions (${sessions.length})`, icon: Calendar },
           { id: 'attendance', label: 'Attendance Register', icon: UserCheck },
           { id: 'progress', label: 'Syllabus & Progress', icon: BookOpen },
@@ -697,6 +713,119 @@ export const AdminCourseDetailPage: React.FC = () => {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: COURSE BATCHES */}
+      {/* ========================================================================= */}
+      {activeTab === 'batches' && (
+        <div className="bg-white rounded-2xl p-6 border border-gray-200/80 shadow-2xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <Layers className="w-5 h-5 text-primary-600" />
+                Active & Upcoming Course Batches
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Manage cohort timings, lab room allocations, seat capacities, and student rosters for {course.title}
+              </p>
+            </div>
+            <button
+              onClick={() => setIsEnrollDialogOpen(true)}
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              <Users className="w-4 h-4" />
+              <span>Enroll Students to Batch</span>
+            </button>
+          </div>
+
+          {batches.length === 0 ? (
+            <div className="p-8 text-center bg-gray-50 rounded-xl border border-gray-100 space-y-3">
+              <Layers className="w-8 h-8 text-gray-400 mx-auto" />
+              <p className="text-xs text-gray-500 font-semibold">No batches configured for this course yet.</p>
+              <button
+                onClick={() => navigate('/admin/batches')}
+                className="px-4 py-2 text-xs font-bold brand-gradient-bg text-white rounded-xl"
+              >
+                Create Batch in Batches CMS
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {batches.map((b) => (
+                <div
+                  key={b.id}
+                  className="bg-white rounded-xl p-5 border border-gray-200 shadow-2xs hover:border-[#087F78]/50 transition-all flex flex-col justify-between space-y-3"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-[#087F78]">
+                        {b.id}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                        {b.academicStatus || b.status || 'Active'}
+                      </span>
+                    </div>
+
+                    <h4 className="text-sm font-bold text-gray-900">
+                      {b.name || `${course.title} - ${b.timing}`}
+                    </h4>
+
+                    <div className="space-y-1 text-xs text-gray-600 pt-1">
+                      <p className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span>{b.timing} ({b.timeRange || '10:00 AM – 12:00 PM'})</span>
+                      </p>
+                      <p className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-[#087F78]" />
+                        <span>Starts: {b.startDate}</span>
+                      </p>
+                      <p className="flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-[#12A77A]" />
+                        <span>Trainer: {b.trainerName || 'SSCI Faculty'}</span>
+                      </p>
+                    </div>
+
+                    {/* Seat Occupancy */}
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-gray-500 mb-1">
+                        <span>Seat Fill Rate</span>
+                        <span className="text-[#087F78] font-bold">
+                          {b.enrolledCount ?? b.filledSeats ?? 0} / {b.capacity ?? b.totalSeats ?? 20}
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                        <div
+                          className="h-full rounded-full brand-gradient-bg"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              Math.round(
+                                ((b.enrolledCount ?? b.filledSeats ?? 0) /
+                                  (b.capacity ?? b.totalSeats ?? 20)) *
+                                  100
+                              )
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-100">
+                    <button
+                      onClick={() => navigate(`/admin/batches/${b.id}`)}
+                      className="w-full py-2 px-3 rounded-lg bg-teal-50 hover:bg-teal-100 text-[#087F78] text-xs font-bold transition-all flex items-center justify-center gap-1 border border-teal-200"
+                    >
+                      <span>Batch Details & Timetable</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

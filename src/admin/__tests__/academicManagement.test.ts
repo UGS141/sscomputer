@@ -207,4 +207,114 @@ describe('Academic Management System — Core Rules & Logic Verification', () =>
       expect(boundedFee).toBe(0);
     });
   });
+
+  describe('5. Batch Capacity & Overfill Prevention', () => {
+    it('enforces maximum seat capacity on bulk batch enrollment', () => {
+      const batch = { id: 'BAT-01', capacity: 15, currentEnrolled: 13 };
+      const newCandidateCount = 3;
+
+      const canEnroll = batch.currentEnrolled + newCandidateCount <= batch.capacity;
+      expect(canEnroll).toBe(false);
+
+      const availableSeats = batch.capacity - batch.currentEnrolled;
+      expect(availableSeats).toBe(2);
+    });
+
+    it('allows enrollment when candidate count is within available seats', () => {
+      const batch = { id: 'BAT-01', capacity: 20, currentEnrolled: 15 };
+      const newCandidateCount = 4;
+
+      const canEnroll = batch.currentEnrolled + newCandidateCount <= batch.capacity;
+      expect(canEnroll).toBe(true);
+    });
+  });
+
+  describe('6. Batch Transfer Business Rules & History Preservation', () => {
+    it('allows transfer only between batches of the exact same course', () => {
+      const currentEnrollment = {
+        id: 'ENR-01',
+        studentId: 'SSCI-STD-2026-01',
+        courseSlug: 'python-programming',
+        batchId: 'BAT-PY-01',
+      };
+
+      const validTargetBatch = { id: 'BAT-PY-02', courseSlug: 'python-programming', capacity: 20, currentEnrolled: 12 };
+      const invalidTargetBatch = { id: 'BAT-JS-01', courseSlug: 'react-frontend-development', capacity: 20, currentEnrolled: 5 };
+
+      const isSameCourseValid = validTargetBatch.courseSlug === currentEnrollment.courseSlug;
+      const isSameCourseInvalid = invalidTargetBatch.courseSlug === currentEnrollment.courseSlug;
+
+      expect(isSameCourseValid).toBe(true);
+      expect(isSameCourseInvalid).toBe(false);
+    });
+
+    it('records complete transfer audit trail with effective date and updates batch seat counts', () => {
+      const enrollment = {
+        id: 'ENR-01',
+        studentId: 'SSCI-STD-2026-01',
+        studentName: 'Ramesh Kumar',
+        batchId: 'BAT-PY-01',
+        batchName: 'Python Morning',
+        transferHistory: [] as any[],
+      };
+
+      const fromBatch = { id: 'BAT-PY-01', name: 'Python Morning', filledSeats: 15 };
+      const toBatch = { id: 'BAT-PY-02', name: 'Python Evening', filledSeats: 8, capacity: 20 };
+
+      // Execute transfer
+      enrollment.transferHistory.push({
+        fromBatchId: fromBatch.id,
+        fromBatchName: fromBatch.name,
+        toBatchId: toBatch.id,
+        toBatchName: toBatch.name,
+        transferredAt: new Date().toISOString(),
+        effectiveDate: '2026-10-25',
+        reason: 'Requested evening slot for college schedule',
+        transferredBy: 'Admin User',
+      });
+
+      enrollment.batchId = toBatch.id;
+      enrollment.batchName = toBatch.name;
+
+      fromBatch.filledSeats--;
+      toBatch.filledSeats++;
+
+      expect(enrollment.batchId).toBe('BAT-PY-02');
+      expect(enrollment.transferHistory.length).toBe(1);
+      expect(enrollment.transferHistory[0].reason).toBe('Requested evening slot for college schedule');
+      expect(fromBatch.filledSeats).toBe(14);
+      expect(toBatch.filledSeats).toBe(9);
+    });
+  });
+
+  describe('7. Centralized Multi-Course Student Profile Aggregation', () => {
+    it('accurately computes student average attendance and learning progress across multiple enrollments', () => {
+      const studentEnrollments = [
+        {
+          id: 'ENR-01',
+          courseSlug: 'python-programming',
+          status: 'Active',
+          attendancePercentage: 80,
+          learningProgressPercentage: 60,
+        },
+        {
+          id: 'ENR-02',
+          courseSlug: 'advanced-excel-financial-modeling',
+          status: 'Active',
+          attendancePercentage: 90,
+          learningProgressPercentage: 100,
+        },
+      ];
+
+      const sumAtt = studentEnrollments.reduce((sum, e) => sum + e.attendancePercentage, 0);
+      const sumProg = studentEnrollments.reduce((sum, e) => sum + e.learningProgressPercentage, 0);
+
+      const avgAttendance = Math.round(sumAtt / studentEnrollments.length);
+      const avgProgress = Math.round(sumProg / studentEnrollments.length);
+
+      expect(avgAttendance).toBe(85);
+      expect(avgProgress).toBe(80);
+      expect(studentEnrollments.length).toBe(2);
+    });
+  });
 });

@@ -1,13 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Plus, Edit3, Trash2, Users, Clock } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Calendar, Plus, Edit3, Trash2, Users, Clock, ArrowRight, BookOpen, Layers } from 'lucide-react';
 import { cmsStore, type Batch } from '../cmsStore';
+import { apiService } from '../../services/api';
 
 export const AdminBatchesPage: React.FC = () => {
   const [batches, setBatches] = useState<Batch[]>(cmsStore.getBatches());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
 
+  const fetchLiveBatches = async () => {
+    try {
+      const res = await apiService.getBatches();
+      if (res?.success && Array.isArray(res.batches)) {
+        setBatches(res.batches);
+      } else {
+        setBatches([...cmsStore.getBatches()]);
+      }
+    } catch (_) {
+      setBatches([...cmsStore.getBatches()]);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveBatches();
+    const unsubscribe = cmsStore.subscribe(() => {
+      fetchLiveBatches();
+    });
+    return unsubscribe;
+  }, []);
+
   const [formData, setFormData] = useState<Partial<Batch>>({
+    name: '',
     courseName: 'Python Programming',
     courseSlug: 'python-programming',
     category: 'Programming',
@@ -18,17 +42,12 @@ export const AdminBatchesPage: React.FC = () => {
     timeRange: '08:00 AM – 10:00 AM',
     mode: 'Practical Lab',
     status: 'Starting Soon',
-    filledSeats: 8,
+    filledSeats: 0,
     totalSeats: 20,
+    capacity: 20,
+    academicStatus: 'Draft',
     trainerName: 'Senior SSCI Faculty',
   });
-
-  useEffect(() => {
-    const unsubscribe = cmsStore.subscribe(() => {
-      setBatches([...cmsStore.getBatches()]);
-    });
-    return unsubscribe;
-  }, []);
 
   const handleOpenCreate = () => {
     setEditingBatch(null);
@@ -93,26 +112,36 @@ export const AdminBatchesPage: React.FC = () => {
       {/* Batches Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {batches.map((batch) => (
-          <div key={batch.id} className="bg-white rounded-2xl p-6 border border-teal-100/70 shadow-2xs space-y-4 flex flex-col justify-between group">
+          <div key={batch.id} className="bg-white rounded-2xl p-6 border border-teal-100/70 shadow-2xs space-y-4 flex flex-col justify-between group hover:border-[#087F78]/50 transition-all">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-teal-50 text-[#087F78] uppercase">
                   {batch.id}
                 </span>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                  batch.status === 'Open' || batch.status === 'Starting Soon'
-                    ? 'bg-emerald-100 text-[#12A77A]'
-                    : batch.status === 'Filling Fast' || batch.status === 'Few Seats Left'
-                    ? 'bg-orange-100 text-[#F97316]'
-                    : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {batch.status}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {batch.academicStatus && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                      {batch.academicStatus}
+                    </span>
+                  )}
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    batch.status === 'Open' || batch.status === 'Starting Soon'
+                      ? 'bg-emerald-100 text-[#12A77A]'
+                      : batch.status === 'Filling Fast' || batch.status === 'Few Seats Left'
+                      ? 'bg-orange-100 text-[#F97316]'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {batch.status}
+                  </span>
+                </div>
               </div>
 
-              <h3 className="text-lg font-bold text-[#123B3A] group-hover:text-[#087F78] transition-colors">
-                {batch.courseName}
-              </h3>
+              <div>
+                <h3 className="text-base font-bold text-[#123B3A] group-hover:text-[#087F78] transition-colors">
+                  {batch.name || `${batch.courseName} - ${batch.timing}`}
+                </h3>
+                <p className="text-[11px] text-gray-400 font-medium">{batch.courseName}</p>
+              </div>
 
               <div className="space-y-1.5 text-xs text-gray-600">
                 <p className="flex items-center gap-2">
@@ -124,6 +153,10 @@ export const AdminBatchesPage: React.FC = () => {
                   <span>Timing: {batch.timing} ({batch.timeRange})</span>
                 </p>
                 <p className="flex items-center gap-2">
+                  <Layers className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Sessions: <strong>{batch.totalSessions ?? 0} scheduled</strong></span>
+                </p>
+                <p className="flex items-center gap-2">
                   <Users className="w-3.5 h-3.5 text-[#12A77A]" />
                   <span>Trainer: {batch.trainerName || 'SSCI Faculty'}</span>
                 </p>
@@ -133,33 +166,54 @@ export const AdminBatchesPage: React.FC = () => {
               <div className="pt-2">
                 <div className="flex items-center justify-between text-[11px] font-bold mb-1">
                   <span className="text-gray-500">Seats Enrolled</span>
-                  <span className="text-[#087F78]">{batch.filledSeats} / {batch.totalSeats}</span>
+                  <span className="text-[#087F78]">
+                    {batch.enrolledCount ?? batch.filledSeats ?? 0} / {batch.capacity ?? batch.totalSeats ?? 20}
+                  </span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
                   <div
                     className="h-full rounded-full brand-gradient-bg"
-                    style={{ width: `${Math.min(100, Math.round((batch.filledSeats / batch.totalSeats) * 100))}%` }}
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.round(
+                          ((batch.enrolledCount ?? batch.filledSeats ?? 0) /
+                            (batch.capacity ?? batch.totalSeats ?? 20)) *
+                            100
+                        )
+                      )}%`,
+                    }}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-              <button
-                onClick={() => handleOpenEdit(batch)}
-                className="text-xs font-bold text-[#087F78] hover:underline flex items-center gap-1"
+            <div className="space-y-2 pt-3 border-t border-gray-100">
+              <Link
+                to={`/admin/batches/${batch.id}`}
+                className="w-full py-2 px-3 rounded-xl bg-teal-50 hover:bg-teal-100 text-[#087F78] text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-teal-200"
               >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>Edit Batch</span>
-              </button>
+                <span>Timetable & Students Roster</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
 
-              <button
-                onClick={() => handleDelete(batch.id)}
-                className="text-xs font-bold text-red-500 hover:underline flex items-center gap-1"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete</span>
-              </button>
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  onClick={() => handleOpenEdit(batch)}
+                  className="text-xs font-bold text-gray-500 hover:text-[#087F78] flex items-center gap-1"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Edit</span>
+                </button>
+
+                <button
+                  onClick={() => handleDelete(batch.id)}
+                  className="text-xs font-bold text-red-500 hover:underline flex items-center gap-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+              </div>
             </div>
           </div>
         ))}

@@ -4,6 +4,7 @@ const attendanceSchema = new mongoose.Schema(
   {
     id: { type: String, required: true, unique: true, index: true },
     courseSlug: { type: String, required: true, index: true },
+    batchId: { type: String, index: true },
     sessionId: { type: String, required: true, index: true },
     enrollmentId: { type: String, required: true, index: true },
     studentId: { type: String, required: true, index: true },

@@ -104,8 +104,9 @@ export const apiService = {
   getCourseBySlug: async (slug: string) => {
     return await apiService.request(`/api/courses/${slug}`);
   },
-  getBatches: async () => {
-    return await apiService.request('/api/batches');
+  getBatches: async (params?: { courseSlug?: string; status?: string }) => {
+    const query = new URLSearchParams((params || {}) as Record<string, string>).toString();
+    return await apiService.request(`/api/batches${query ? `?${query}` : ''}`);
   },
   getBlogPosts: async () => {
     return await apiService.request('/api/blog');
@@ -162,11 +163,27 @@ export const apiService = {
   },
 
   // Batches API
+  getBatchById: async (id: string) => {
+    return await apiService.request(`/api/batches/${encodeURIComponent(id)}`);
+  },
   saveBatch: async (batchData: any) => {
     return await apiService.request('/api/batches', 'POST', batchData);
   },
+  updateBatch: async (id: string, batchData: any) => {
+    return await apiService.request(`/api/batches/${encodeURIComponent(id)}`, 'PUT', batchData);
+  },
   deleteBatch: async (id: string) => {
-    return await apiService.request(`/api/batches/${id}`, 'DELETE');
+    return await apiService.request(`/api/batches/${encodeURIComponent(id)}`, 'DELETE');
+  },
+  generateBatchSessions: async (batchId: string) => {
+    return await apiService.request(`/api/batches/${encodeURIComponent(batchId)}/generate-sessions`, 'POST');
+  },
+  enrollBatchStudents: async (batchId: string, payload: { studentIds: string[]; applicableFee?: number; discount?: number; feeStatus?: string; notes?: string }) => {
+    return await apiService.request(`/api/batches/${encodeURIComponent(batchId)}/enroll`, 'POST', payload);
+  },
+  getBatchAttendance: async (batchId: string, params?: { sessionId?: string; date?: string }) => {
+    const query = new URLSearchParams((params || {}) as Record<string, string>).toString();
+    return await apiService.request(`/api/batches/${encodeURIComponent(batchId)}/attendance${query ? `?${query}` : ''}`);
   },
 
   // Blog API
@@ -247,6 +264,9 @@ export const apiService = {
   },
   deleteEnrollment: async (id: string) => {
     return await apiService.request(`/api/enrollments/${encodeURIComponent(id)}`, 'DELETE');
+  },
+  transferStudentBatch: async (enrollmentId: string, payload: { toBatchId: string; reason?: string; effectiveDate?: string }) => {
+    return await apiService.request(`/api/enrollments/${encodeURIComponent(enrollmentId)}/transfer`, 'POST', payload);
   },
 
   // Sessions & Timetable API

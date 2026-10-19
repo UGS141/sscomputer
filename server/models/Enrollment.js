@@ -9,6 +9,8 @@ const enrollmentSchema = new mongoose.Schema(
     studentEmail: { type: String },
     courseSlug: { type: String, required: true, index: true },
     courseTitle: { type: String, required: true },
+    batchId: { type: String, index: true },
+    batchName: { type: String },
     enrollmentDate: { type: String, default: () => new Date().toISOString() },
     status: {
       type: String,
@@ -29,6 +31,17 @@ const enrollmentSchema = new mongoose.Schema(
     completedAt: { type: Date },
     withdrawnAt: { type: Date },
     withdrawalReason: { type: String },
+    transferHistory: [
+      {
+        fromBatchId: { type: String },
+        fromBatchName: { type: String },
+        toBatchId: { type: String },
+        toBatchName: { type: String },
+        transferredAt: { type: Date, default: Date.now },
+        reason: { type: String },
+        transferredBy: { type: String },
+      },
+    ],
     notes: { type: String },
   },
   { timestamps: true }

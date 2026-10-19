@@ -28,6 +28,7 @@ import { Attendance } from './models/Attendance.js';
 import { ModuleProgress } from './models/ModuleProgress.js';
 import {
   generateCourseSessions,
+  generateBatchSessions,
   calculateEnrollmentAttendance,
   calculateEnrollmentProgress,
   evaluateCourseCompletion,
@@ -234,24 +235,164 @@ app.delete('/api/courses/:slug', authenticateToken, authorizeRoles('SUPER ADMIN'
 // ----------------------------------------------------
 // BATCHES APIs
 // ----------------------------------------------------
+// ----------------------------------------------------
+// BATCHES APIs
+// ----------------------------------------------------
 app.get('/api/batches', async (req, res) => {
   try {
-    const batches = await Batch.find().sort({ createdAt: -1 });
-    res.json({ success: true, batches });
+    const filter = {};
+    if (req.query.courseSlug) filter.courseSlug = req.query.courseSlug;
+    if (req.query.status) filter.status = req.query.status;
+
+    const batches = await Batch.find(filter).sort({ createdAt: -1 });
+
+    // Enrich batches with live enrollment counts and session counts
+    const enrichedBatches = await Promise.all(
+      batches.map(async (b) => {
+        const [activeCount, totalSessions, completedSessions] = await Promise.all([
+          Enrollment.countDocuments({ batchId: b.id, status: 'Active' }),
+          Session.countDocuments({ batchId: b.id }),
+          Session.countDocuments({ batchId: b.id, status: 'Completed' }),
+        ]);
+
+        const batchObj = b.toObject();
+        batchObj.enrolledCount = activeCount;
+        batchObj.filledSeats = activeCount;
+        batchObj.totalSessions = totalSessions;
+        batchObj.completedSessions = completedSessions;
+        batchObj.upcomingSessions = Math.max(0, totalSessions - completedSessions);
+        return batchObj;
+      })
+    );
+
+    res.json({ success: true, batches: enrichedBatches });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Error fetching batches.' });
+    res.status(500).json({ success: false, message: 'Error fetching batches: ' + err.message });
+  }
+});
+
+app.get('/api/batches/:id', async (req, res) => {
+  try {
+    const batch = await Batch.findOne({ id: req.params.id });
+    if (!batch) {
+      return res.status(404).json({ success: false, message: 'Batch not found.' });
+    }
+
+    const [course, enrollments, sessions] = await Promise.all([
+      Course.findOne({ slug: batch.courseSlug }),
+      Enrollment.find({ batchId: batch.id }).sort({ createdAt: -1 }),
+      Session.find({ batchId: batch.id }).sort({ date: 1, startTime: 1 }),
+    ]);
+
+    const enrichedEnrollments = await Promise.all(
+      enrollments.map(async (enr) => {
+        const enrObj = enr.toObject();
+        try {
+          const stats = await calculateEnrollmentAttendance(enr.id);
+          enrObj.attendancePercentage = stats.attendancePercentage;
+          enrObj.sessionsPresent = stats.present;
+          enrObj.sessionsLate = stats.late;
+          enrObj.sessionsAbsent = stats.absent;
+          enrObj.eligibleSessions = stats.eligibleScheduledSessions;
+        } catch (_) {}
+        return enrObj;
+      })
+    );
+
+    const batchObj = batch.toObject();
+    batchObj.enrolledCount = enrollments.filter((e) => e.status === 'Active').length;
+    batchObj.completedSessions = sessions.filter((s) => s.status === 'Completed' || s.attendanceFinalized).length;
+    batchObj.totalSessions = sessions.length;
+
+    res.json({
+      success: true,
+      batch: batchObj,
+      course,
+      enrollments: enrichedEnrollments,
+      sessions,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error fetching batch details: ' + err.message });
+  }
+});
+
+// Get attendance records for a batch
+app.get('/api/batches/:id/attendance', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const batch = await Batch.findOne({ id: req.params.id });
+    if (!batch) {
+      return res.status(404).json({ success: false, message: 'Batch not found.' });
+    }
+
+    const filter = { batchId: batch.id };
+    if (req.query.sessionId) filter.sessionId = req.query.sessionId;
+    if (req.query.date) filter.sessionDate = req.query.date;
+
+    const records = await Attendance.find(filter).sort({ sessionDate: -1, createdAt: -1 });
+    res.json({ success: true, attendance: records });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error fetching batch attendance: ' + err.message });
   }
 });
 
 app.post('/api/batches', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
-    const batchData = req.body;
+    const batchData = { ...req.body };
+    if (!batchData.id) {
+      const count = await Batch.countDocuments();
+      batchData.id = `BAT-${(count + 1).toString().padStart(2, '0')}`;
+    }
+
+    if (!batchData.courseSlug) {
+      return res.status(400).json({ success: false, message: 'courseSlug is required.' });
+    }
+
+    const course = await Course.findOne({ slug: batchData.courseSlug });
+    if (!course) {
+      return res.status(404).json({ success: false, message: `Course "${batchData.courseSlug}" not found.` });
+    }
+
+    batchData.courseName = course.title;
+    batchData.category = course.categoryName || batchData.category;
+    batchData.capacity = Number(batchData.capacity) || Number(batchData.totalSeats) || 20;
+    batchData.totalSeats = batchData.capacity;
+    batchData.name = batchData.name || `${course.title} - ${batchData.timing || 'Batch'}`;
+
     const batch = await Batch.findOneAndUpdate(
       { id: batchData.id },
       batchData,
       { upsert: true, new: true, runValidators: true }
     );
-    await logAudit(req.user.name, 'SAVE_BATCH', 'Batches', `Saved batch "${batch.id}".`);
+
+    // Auto-generate timetable sessions if requested
+    let sessionGenResult = null;
+    if (req.body.autoGenerateSessions && batch.startDate) {
+      try {
+        sessionGenResult = await generateBatchSessions(batch, course);
+      } catch (genErr) {
+        console.warn('Could not auto-generate sessions for batch:', genErr.message);
+      }
+    }
+
+    await logAudit(req.user.name, 'SAVE_BATCH', 'Batches', `Saved batch "${batch.name}" (${batch.id}) for course "${course.title}".`);
+    res.json({ success: true, batch, sessionGenResult });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+app.put('/api/batches/:id', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
+  try {
+    const batch = await Batch.findOneAndUpdate(
+      { id: req.params.id },
+      { $set: req.body },
+      { new: true, runValidators: true }
+    );
+    if (!batch) {
+      return res.status(404).json({ success: false, message: 'Batch not found.' });
+    }
+
+    await logAudit(req.user.name, 'UPDATE_BATCH', 'Batches', `Updated batch "${batch.name || batch.id}".`);
     res.json({ success: true, batch });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -260,11 +401,162 @@ app.post('/api/batches', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN
 
 app.delete('/api/batches/:id', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'), async (req, res) => {
   try {
-    await Batch.findOneAndDelete({ id: req.params.id });
-    await logAudit(req.user.name, 'DELETE_BATCH', 'Batches', `Deleted batch "${req.params.id}".`);
+    const batch = await Batch.findOneAndDelete({ id: req.params.id });
+    if (batch) {
+      await Session.deleteMany({ batchId: batch.id });
+      await logAudit(req.user.name, 'DELETE_BATCH', 'Batches', `Deleted batch "${req.params.id}".`);
+    }
     res.json({ success: true, message: 'Batch deleted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error deleting batch.' });
+  }
+});
+
+// Generate Scheduled Sessions for Batch
+app.post('/api/batches/:id/generate-sessions', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const batch = await Batch.findOne({ id: req.params.id });
+    if (!batch) {
+      return res.status(404).json({ success: false, message: 'Batch not found.' });
+    }
+
+    const course = await Course.findOne({ slug: batch.courseSlug });
+    const result = await generateBatchSessions(batch, course);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    await logAudit(
+      req.user.name,
+      'GENERATE_BATCH_SESSIONS',
+      'Academics',
+      `Generated ${result.newCreatedCount} sessions for batch "${batch.name || batch.id}".`
+    );
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error generating batch sessions: ' + err.message });
+  }
+});
+
+// Add Existing Students directly into Batch
+app.post('/api/batches/:id/enroll', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const batch = await Batch.findOne({ id: req.params.id });
+    if (!batch) {
+      return res.status(404).json({ success: false, message: 'Batch not found.' });
+    }
+
+    const course = await Course.findOne({ slug: batch.courseSlug });
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Associated course not found.' });
+    }
+
+    const { studentIds, applicableFee, discount, feeStatus, notes } = req.body;
+    const rawIds = Array.isArray(studentIds) ? studentIds : [];
+
+    if (rawIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'At least one student must be selected.' });
+    }
+
+    // Capacity Check
+    const currentActiveEnrolled = await Enrollment.countDocuments({ batchId: batch.id, status: 'Active' });
+    const batchCap = batch.capacity || batch.totalSeats || 20;
+    if (currentActiveEnrolled + rawIds.length > batchCap) {
+      return res.status(400).json({
+        success: false,
+        message: `Batch capacity exceeded. Current: ${currentActiveEnrolled}/${batchCap}. Cannot add ${rawIds.length} more students.`,
+      });
+    }
+
+    const students = await Student.find({
+      $or: [{ studentId: { $in: rawIds } }, { id: { $in: rawIds } }],
+    });
+
+    const createdEnrollments = [];
+    const skippedStudents = [];
+
+    const feeAmount = typeof applicableFee === 'number' ? applicableFee : (course.price || 0);
+    const discountAmount = typeof discount === 'number' ? discount : 0;
+    const finalFee = Math.max(0, feeAmount - discountAmount);
+
+    for (const student of students) {
+      // 1. Check if already enrolled in this exact batch
+      const alreadyInBatch = await Enrollment.findOne({
+        studentId: student.studentId,
+        batchId: batch.id,
+        status: { $ne: 'Withdrawn' },
+      });
+
+      if (alreadyInBatch) {
+        skippedStudents.push({
+          studentId: student.studentId,
+          name: student.name,
+          reason: `Already enrolled in batch "${batch.name || batch.id}"`,
+        });
+        continue;
+      }
+
+      // 2. Check if actively enrolled in another batch of the same course
+      const inAnotherBatch = await Enrollment.findOne({
+        studentId: student.studentId,
+        courseSlug: batch.courseSlug,
+        batchId: { $ne: batch.id },
+        status: 'Active',
+      });
+
+      if (inAnotherBatch) {
+        skippedStudents.push({
+          studentId: student.studentId,
+          name: student.name,
+          reason: `Already actively enrolled in another batch ("${inAnotherBatch.batchName || inAnotherBatch.batchId}"). Please use Transfer Workflow.`,
+        });
+        continue;
+      }
+
+      const enrollmentId = `ENR-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`;
+      const enrollment = await Enrollment.create({
+        id: enrollmentId,
+        studentId: student.studentId,
+        studentName: student.name,
+        studentPhone: student.phone,
+        studentEmail: student.email,
+        courseSlug: course.slug,
+        courseTitle: course.title,
+        batchId: batch.id,
+        batchName: batch.name || batch.id,
+        applicableFee: finalFee,
+        discount: discountAmount,
+        feeStatus: feeStatus || 'Paid',
+        notes: notes || '',
+        status: 'Active',
+      });
+
+      await initializeStudentModuleProgress(enrollment, course);
+      createdEnrollments.push(enrollment);
+
+      await logAudit(
+        req.user.name,
+        'ENROLL_BATCH_STUDENT',
+        'Academics',
+        `Enrolled student "${student.name}" (${student.studentId}) in batch "${batch.name || batch.id}" of course "${course.title}".`
+      );
+    }
+
+    // Update filled seats counter on batch
+    batch.filledSeats = await Enrollment.countDocuments({ batchId: batch.id, status: 'Active' });
+    await batch.save();
+
+    res.json({
+      success: true,
+      message: `Enrolled ${createdEnrollments.length} student(s) into batch "${batch.name || batch.id}". ${skippedStudents.length} student(s) skipped.`,
+      enrolledCount: createdEnrollments.length,
+      skippedCount: skippedStudents.length,
+      enrollments: createdEnrollments,
+      skipped: skippedStudents,
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: 'Error enrolling students into batch: ' + err.message });
   }
 });
 
@@ -653,9 +945,49 @@ app.delete('/api/trainers/:id', authenticateToken, authorizeRoles('SUPER ADMIN',
 app.get('/api/students', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
   try {
     const students = await Student.find().sort({ createdAt: -1 });
-    res.json({ success: true, students });
+    const allEnrollments = await Enrollment.find({ status: { $ne: 'Withdrawn' } });
+
+    const enrollmentMap = {};
+    for (const enr of allEnrollments) {
+      if (!enrollmentMap[enr.studentId]) {
+        enrollmentMap[enr.studentId] = [];
+      }
+      enrollmentMap[enr.studentId].push(enr);
+    }
+
+    const enrichedStudents = students.map((std) => {
+      const stdObj = std.toObject();
+      const stdEnrollments = enrollmentMap[std.studentId] || [];
+      stdObj.enrollments = stdEnrollments;
+      stdObj.activeCoursesCount = stdEnrollments.length;
+      stdObj.enrolledCourses = stdEnrollments.map((e) => ({
+        id: e.id,
+        courseSlug: e.courseSlug,
+        courseTitle: e.courseTitle,
+        batchId: e.batchId,
+        batchName: e.batchName,
+        status: e.status,
+        attendancePercentage: e.attendancePercentage || 0,
+        learningProgressPercentage: e.learningProgressPercentage || 0,
+      }));
+
+      // Calculate average attendance & learning progress across their active enrollments
+      if (stdEnrollments.length > 0) {
+        const sumAtt = stdEnrollments.reduce((sum, e) => sum + (e.attendancePercentage || 0), 0);
+        const sumProg = stdEnrollments.reduce((sum, e) => sum + (e.learningProgressPercentage || 0), 0);
+        stdObj.averageAttendancePercentage = Math.round(sumAtt / stdEnrollments.length);
+        stdObj.averageLearningProgressPercentage = Math.round(sumProg / stdEnrollments.length);
+      } else {
+        stdObj.averageAttendancePercentage = 0;
+        stdObj.averageLearningProgressPercentage = 0;
+      }
+
+      return stdObj;
+    });
+
+    res.json({ success: true, students: enrichedStudents });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Error fetching students.' });
+    res.status(500).json({ success: false, message: 'Error fetching students: ' + err.message });
   }
 });
 
@@ -667,9 +999,35 @@ app.get('/api/students/:id', authenticateToken, authorizeRoles('SUPER ADMIN', 'A
     if (!student) {
       return res.status(404).json({ success: false, message: 'Student record not found.' });
     }
-    res.json({ success: true, student });
+
+    const [enrollments, certificates] = await Promise.all([
+      Enrollment.find({ studentId: student.studentId }).sort({ createdAt: -1 }),
+      CertificateRecord.find({ studentName: student.name }).sort({ createdAt: -1 }),
+    ]);
+
+    const enrichedEnrollments = await Promise.all(
+      enrollments.map(async (enr) => {
+        const enrObj = enr.toObject();
+        try {
+          const stats = await calculateEnrollmentAttendance(enr.id);
+          enrObj.attendancePercentage = stats.attendancePercentage;
+          enrObj.sessionsPresent = stats.present;
+          enrObj.sessionsLate = stats.late;
+          enrObj.sessionsAbsent = stats.absent;
+          enrObj.eligibleSessions = stats.eligibleScheduledSessions;
+        } catch (_) {}
+        return enrObj;
+      })
+    );
+
+    res.json({
+      success: true,
+      student,
+      enrollments: enrichedEnrollments,
+      certificates,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Error fetching student details.' });
+    res.status(500).json({ success: false, message: 'Error fetching student details: ' + err.message });
   }
 });
 
@@ -928,6 +1286,108 @@ app.put('/api/enrollments/:id/status', authenticateToken, authorizeRoles('SUPER 
     res.json({ success: true, enrollment });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error updating enrollment status: ' + err.message });
+  }
+});
+
+// Transfer Student Enrollment to another Batch
+app.post('/api/enrollments/:id/transfer', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const { toBatchId, reason, effectiveDate } = req.body;
+    if (!toBatchId) {
+      return res.status(400).json({ success: false, message: 'Target batch (toBatchId) is required.' });
+    }
+
+    const enrollment = await Enrollment.findOne({ id: req.params.id });
+    if (!enrollment) {
+      return res.status(404).json({ success: false, message: 'Enrollment record not found.' });
+    }
+
+    if (enrollment.status === 'Withdrawn') {
+      return res.status(400).json({ success: false, message: 'Cannot transfer a withdrawn enrollment.' });
+    }
+
+    if (enrollment.batchId === toBatchId) {
+      return res.status(400).json({ success: false, message: 'Student is already enrolled in this batch.' });
+    }
+
+    const targetBatch = await Batch.findOne({ id: toBatchId });
+    if (!targetBatch) {
+      return res.status(404).json({ success: false, message: 'Target batch not found.' });
+    }
+
+    // Verify target batch belongs to the same course
+    if (targetBatch.courseSlug !== enrollment.courseSlug) {
+      return res.status(400).json({
+        success: false,
+        message: `Target batch belongs to course "${targetBatch.courseName || targetBatch.courseSlug}", but enrollment is for "${enrollment.courseTitle}". Transfers must be between batches of the same course.`,
+      });
+    }
+
+    // Check capacity of target batch
+    const currentActiveEnrolled = await Enrollment.countDocuments({ batchId: targetBatch.id, status: 'Active' });
+    const targetCap = targetBatch.capacity || targetBatch.totalSeats || 20;
+    if (currentActiveEnrolled >= targetCap) {
+      return res.status(400).json({
+        success: false,
+        message: `Target batch "${targetBatch.name || targetBatch.id}" is at full capacity (${currentActiveEnrolled}/${targetCap}). Transfer cannot be completed.`,
+      });
+    }
+
+    const oldBatchId = enrollment.batchId;
+    const oldBatchName = enrollment.batchName || 'Unassigned';
+
+    // Record transfer in history
+    if (!enrollment.transferHistory) {
+      enrollment.transferHistory = [];
+    }
+    enrollment.transferHistory.push({
+      fromBatchId: oldBatchId || 'Unassigned',
+      fromBatchName: oldBatchName,
+      toBatchId: targetBatch.id,
+      toBatchName: targetBatch.name || targetBatch.id,
+      transferredAt: new Date(),
+      effectiveDate: effectiveDate ? new Date(effectiveDate) : new Date(),
+      reason: reason || 'Administrative transfer',
+      transferredBy: req.user.name,
+    });
+
+    // Update enrollment batch reference
+    enrollment.batchId = targetBatch.id;
+    enrollment.batchName = targetBatch.name || targetBatch.id;
+    await enrollment.save();
+
+    // Update filled seats on old batch and target batch
+    if (oldBatchId) {
+      const oldBatch = await Batch.findOne({ id: oldBatchId });
+      if (oldBatch) {
+        oldBatch.filledSeats = await Enrollment.countDocuments({ batchId: oldBatch.id, status: 'Active' });
+        await oldBatch.save();
+      }
+    }
+    targetBatch.filledSeats = await Enrollment.countDocuments({ batchId: targetBatch.id, status: 'Active' });
+    await targetBatch.save();
+
+    // Recalculate attendance stats for this enrollment
+    try {
+      await calculateEnrollmentAttendance(enrollment.id);
+    } catch (attErr) {
+      console.warn('Attendance recalculation warning on transfer:', attErr.message);
+    }
+
+    await logAudit(
+      req.user.name,
+      'TRANSFER_STUDENT_BATCH',
+      'Academics',
+      `Transferred student "${enrollment.studentName}" from batch "${oldBatchName}" to batch "${targetBatch.name || targetBatch.id}" in course "${enrollment.courseTitle}".`
+    );
+
+    res.json({
+      success: true,
+      message: `Successfully transferred ${enrollment.studentName} to batch "${targetBatch.name || targetBatch.id}".`,
+      enrollment,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error processing batch transfer: ' + err.message });
   }
 });
 

@@ -5,6 +5,8 @@ const sessionSchema = new mongoose.Schema(
     id: { type: String, required: true, unique: true, index: true },
     courseSlug: { type: String, required: true, index: true },
     courseTitle: { type: String },
+    batchId: { type: String, index: true },
+    batchName: { type: String },
     sessionNumber: { type: Number, required: true },
     title: { type: String, required: true },
     date: { type: String, required: true, index: true }, // YYYY-MM-DD
@@ -26,6 +28,7 @@ const sessionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-sessionSchema.index({ courseSlug: 1, date: 1, startTime: 1 }, { unique: true });
+sessionSchema.index({ courseSlug: 1, date: 1, startTime: 1 });
+sessionSchema.index({ batchId: 1, date: 1, startTime: 1 });
 
 export const Session = mongoose.model('Session', sessionSchema);

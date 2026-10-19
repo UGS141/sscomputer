@@ -163,6 +163,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     {
       title: 'ACADEMICS & CURRICULUM',
       items: [
+        { label: 'Student Management', path: '/admin/student-management', icon: GraduationCap },
         { label: 'Courses CMS', path: '/admin/courses', icon: BookOpen },
         { label: 'Upcoming Batches', path: '/admin/batches', icon: Calendar },
       ],

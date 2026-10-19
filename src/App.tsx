@@ -38,6 +38,8 @@ import { AdminCoursesPage } from './admin/pages/AdminCoursesPage';
 import { AdminCourseEditorPage } from './admin/pages/AdminCourseEditorPage';
 import { AdminCourseDetailPage } from './admin/pages/AdminCourseDetailPage';
 import { AdminBatchesPage } from './admin/pages/AdminBatchesPage';
+import { AdminBatchDetailPage } from './admin/pages/AdminBatchDetailPage';
+import { AdminStudentManagementPage } from './admin/pages/AdminStudentManagementPage';
 import { AdminEnquiriesPage } from './admin/pages/AdminEnquiriesPage';
 import { AdminStudentsPage } from './admin/pages/AdminStudentsPage';
 import { AdminTrainersPage } from './admin/pages/AdminTrainersPage';
@@ -105,11 +107,13 @@ export const App: React.FC = () => {
             <AdminLayout>
               <Routes>
                 <Route path="/" element={<AdminDashboard />} />
+                <Route path="/student-management" element={<AdminStudentManagementPage />} />
                 <Route path="/courses" element={<AdminCoursesPage />} />
                 <Route path="/courses/new" element={<AdminCourseEditorPage />} />
                 <Route path="/courses/edit/:slug" element={<AdminCourseEditorPage />} />
                 <Route path="/courses/:slug" element={<AdminCourseDetailPage />} />
                 <Route path="/batches" element={<AdminBatchesPage />} />
+                <Route path="/batches/:id" element={<AdminBatchDetailPage />} />
                 <Route path="/enquiries" element={<AdminEnquiriesPage />} />
                 <Route path="/leads" element={<AdminEnquiriesPage />} />
                 <Route path="/students" element={<AdminStudentsPage />} />

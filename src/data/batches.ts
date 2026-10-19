@@ -1,5 +1,6 @@
 export interface Batch {
   id: string;
+  name?: string;
   courseSlug: string;
   courseName: string;
   category: string;
@@ -8,10 +9,23 @@ export interface Batch {
   timing: 'Morning' | 'Afternoon' | 'Evening' | 'Weekend';
   timeRange: string;
   startDate: string;
+  endDate?: string;
+  weekdays?: number[];
+  startTime?: string;
+  endTime?: string;
+  sessionDurationMinutes?: number;
+  timezone?: string;
+  room?: string;
+  capacity?: number;
   mode: 'Classroom' | 'Practical Lab';
   totalSeats: number;
   filledSeats: number;
-  status: 'Starting Soon' | 'Open' | 'Few Seats Left' | 'Filling Fast';
+  enrolledCount?: number;
+  totalSessions?: number;
+  completedSessions?: number;
+  upcomingSessions?: number;
+  academicStatus?: 'Draft' | 'Upcoming' | 'Active' | 'Completed' | 'Archived';
+  status: 'Starting Soon' | 'Open' | 'Few Seats Left' | 'Filling Fast' | string;
   trainerName: string;
 }
 

@@ -142,6 +142,113 @@ export const generateCourseSessions = async (course) => {
 };
 
 /**
+ * 1B. Generate Scheduled Sessions for a Specific Batch Timetable
+ */
+export const generateBatchSessions = async (batch, course) => {
+  if (!batch || !batch.id) throw new Error('Valid batch is required for session generation');
+
+  const startDateStr = batch.startDate;
+  const endDateStr = batch.endDate || course?.schedule?.endDate;
+
+  if (!startDateStr || !endDateStr) {
+    return { success: false, message: 'Batch must have both startDate and endDate configured.', sessions: [] };
+  }
+
+  const startDate = new Date(startDateStr);
+  const endDate = new Date(endDateStr);
+
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || startDate > endDate) {
+    throw new Error('Invalid batch date range. startDate must be earlier than or equal to endDate.');
+  }
+
+  const rawWeekdays = batch.weekdays && batch.weekdays.length > 0
+    ? batch.weekdays
+    : (course?.schedule?.weekdays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
+  const targetDays = rawWeekdays.map(normalizeDay).filter((d) => d >= 0);
+
+  if (targetDays.length === 0) {
+    throw new Error('Batch schedule must configure at least one valid weekday.');
+  }
+
+  const holidays = new Set([
+    ...(batch.holidays || []),
+    ...(course?.schedule?.holidays || []),
+  ].map((h) => formatDateStr(h)));
+
+  const startTime = batch.startTime || course?.schedule?.dailyStartTime || '10:00';
+  const endTime = batch.endTime || course?.schedule?.dailyEndTime || '12:00';
+
+  // Fetch existing sessions for this batch
+  const existingSessions = await Session.find({ batchId: batch.id });
+  const existingByDate = new Map();
+  existingSessions.forEach((s) => existingByDate.set(s.date, s));
+
+  const todayStr = formatDateStr(new Date());
+  let current = new Date(startDate);
+  let sessionNumber = 1;
+  const sessionsToSave = [];
+  let preservedCount = 0;
+  let newCreatedCount = 0;
+
+  while (current <= endDate) {
+    const dayOfWeek = current.getDay();
+    const dateStr = formatDateStr(current);
+
+    if (targetDays.includes(dayOfWeek) && !holidays.has(dateStr)) {
+      const existing = existingByDate.get(dateStr);
+
+      if (existing) {
+        if (existing.status === 'Completed' || existing.attendanceFinalized || dateStr < todayStr) {
+          preservedCount++;
+          sessionNumber++;
+          current.setDate(current.getDate() + 1);
+          continue;
+        }
+
+        existing.startTime = startTime;
+        existing.endTime = endTime;
+        existing.courseTitle = course?.title || batch.courseName;
+        existing.batchName = batch.name || batch.id;
+        sessionsToSave.push(existing);
+      } else {
+        const newSession = new Session({
+          id: `SES-${batch.id}-${sessionNumber}-${Date.now().toString().slice(-4)}`,
+          courseSlug: batch.courseSlug,
+          courseTitle: course?.title || batch.courseName,
+          batchId: batch.id,
+          batchName: batch.name || batch.id,
+          sessionNumber,
+          title: `Session ${sessionNumber}: Class Lecture & Lab`,
+          date: dateStr,
+          startTime,
+          endTime,
+          status: 'Scheduled',
+          isHoliday: false,
+        });
+        sessionsToSave.push(newSession);
+        newCreatedCount++;
+      }
+      sessionNumber++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+
+  for (const s of sessionsToSave) {
+    await s.save();
+  }
+
+  const allSessions = await Session.find({ batchId: batch.id }).sort({ date: 1, startTime: 1 });
+  return {
+    success: true,
+    message: `Generated ${newCreatedCount} new sessions, preserved ${preservedCount} existing sessions. Total sessions: ${allSessions.length}.`,
+    sessions: allSessions,
+    newCreatedCount,
+    preservedCount,
+    totalSessions: allSessions.length,
+  };
+};
+
+/**
  * 2. Calculate Enrollment Attendance according to Exact Section 7 Rules:
  * Formula: ((Present + Late) / Eligible Scheduled Sessions) * 100
  * - Present = attended
@@ -165,12 +272,18 @@ export const calculateEnrollmentAttendance = async (enrollmentId, courseSlug, st
     ? formatDateStr(enrollment.enrollmentDate)
     : '1970-01-01';
 
-  // 1. Fetch eligible sessions (belonging to course, not cancelled, past or today, on/after student enrollment)
-  const eligibleSessions = await Session.find({
-    courseSlug: effectiveCourseSlug,
+  // 1. Fetch eligible sessions (belonging to batch if set, or course, not cancelled, past or today, on/after student enrollment)
+  const sessionFilter = {
     status: { $ne: 'Cancelled' },
     date: { $lte: todayStr, $gte: enrollmentStartDate },
-  }).sort({ date: 1 });
+  };
+  if (enrollment.batchId) {
+    sessionFilter.batchId = enrollment.batchId;
+  } else {
+    sessionFilter.courseSlug = effectiveCourseSlug;
+  }
+
+  const eligibleSessions = await Session.find(sessionFilter).sort({ date: 1 });
 
   const eligibleSessionIds = new Set(eligibleSessions.map((s) => s.id));
 

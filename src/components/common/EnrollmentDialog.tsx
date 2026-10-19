@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { X, UserPlus, Users, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { StudentSelector } from './StudentSelector';
-import { cmsStore, type Course } from '../../admin/cmsStore';
+import { cmsStore, type Course, type Batch } from '../../admin/cmsStore';
 
 interface EnrollmentDialogProps {
   course: Course;
+  batch?: Batch | null;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -13,6 +14,7 @@ interface EnrollmentDialogProps {
 
 export const EnrollmentDialog: React.FC<EnrollmentDialogProps> = ({
   course,
+  batch,
   isOpen,
   onClose,
   onSuccess,
@@ -55,14 +57,25 @@ export const EnrollmentDialog: React.FC<EnrollmentDialogProps> = ({
           return;
         }
 
-        const res = await cmsStore.enrollStudents({
-          courseSlug: course.slug,
-          studentIds: selectedStudentIds,
-          applicableFee: finalFee,
-          discount,
-          feeStatus,
-          notes,
-        });
+        let res;
+        if (batch) {
+          res = await cmsStore.enrollBatchStudents(batch.id, {
+            studentIds: selectedStudentIds,
+            applicableFee: finalFee,
+            discount,
+            feeStatus,
+            notes,
+          });
+        } else {
+          res = await cmsStore.enrollStudents({
+            courseSlug: course.slug,
+            studentIds: selectedStudentIds,
+            applicableFee: finalFee,
+            discount,
+            feeStatus,
+            notes,
+          });
+        }
 
         setSuccessMsg(res.message || `Successfully enrolled ${res.enrolledCount} student(s).`);
         setTimeout(() => {
@@ -88,18 +101,29 @@ export const EnrollmentDialog: React.FC<EnrollmentDialogProps> = ({
           phone: newPhone.trim(),
           email: newEmail.trim() || `${newName.toLowerCase().replace(/\s+/g, '')}@student.ssci`,
           course: course.title,
-          batch: 'Regular Batch',
+          batch: batch?.name || batch?.id || 'Regular Batch',
         });
 
         // Enroll new student
-        const res = await cmsStore.enrollStudents({
-          courseSlug: course.slug,
-          studentIds: [savedStudent.studentId || savedStudent.id],
-          applicableFee: finalFee,
-          discount,
-          feeStatus,
-          notes,
-        });
+        let res;
+        if (batch) {
+          res = await cmsStore.enrollBatchStudents(batch.id, {
+            studentIds: [savedStudent.studentId || savedStudent.id],
+            applicableFee: finalFee,
+            discount,
+            feeStatus,
+            notes,
+          });
+        } else {
+          res = await cmsStore.enrollStudents({
+            courseSlug: course.slug,
+            studentIds: [savedStudent.studentId || savedStudent.id],
+            applicableFee: finalFee,
+            discount,
+            feeStatus,
+            notes,
+          });
+        }
 
         setSuccessMsg(`Registered & enrolled ${savedStudent.name} (${savedStudent.studentId}) successfully.`);
         setTimeout(() => {
@@ -122,10 +146,16 @@ export const EnrollmentDialog: React.FC<EnrollmentDialogProps> = ({
           <div>
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <Users className="w-5 h-5 text-primary-600" />
-              Enroll Students into Course
+              {batch ? 'Enroll Students into Batch' : 'Enroll Students into Course'}
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
               Course: <span className="font-semibold text-gray-700">{course.title}</span>
+              {batch && (
+                <>
+                  {' '}• Batch: <span className="font-semibold text-primary-700">{batch.name || batch.id} ({batch.timing})</span>
+                  {' '}• Capacity: <span className="font-semibold text-gray-700">{batch.enrolledCount ?? batch.filledSeats ?? 0}/{batch.capacity ?? batch.totalSeats ?? 20}</span>
+                </>
+              )}
             </p>
           </div>
           <button
