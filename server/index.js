@@ -22,6 +22,18 @@ import { HeroContent } from './models/HeroContent.js';
 import { Announcement } from './models/Announcement.js';
 import { FloatingSkill } from './models/FloatingSkill.js';
 import { AuditLog } from './models/AuditLog.js';
+import { Enrollment } from './models/Enrollment.js';
+import { Session } from './models/Session.js';
+import { Attendance } from './models/Attendance.js';
+import { ModuleProgress } from './models/ModuleProgress.js';
+import {
+  generateCourseSessions,
+  calculateEnrollmentAttendance,
+  calculateEnrollmentProgress,
+  evaluateCourseCompletion,
+  initializeStudentModuleProgress,
+  formatDateStr,
+} from './services/academicService.js';
 import {
   processLeadNotifications,
   retryLeadNotifications,
@@ -735,6 +747,733 @@ app.delete('/api/students/:id', authenticateToken, authorizeRoles('SUPER ADMIN',
     res.json({ success: true, message: 'Student record deleted successfully.' });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error deleting student record.' });
+  }
+});
+
+// ----------------------------------------------------
+// ENROLLMENT & ACADEMIC MANAGEMENT APIs
+// ----------------------------------------------------
+
+// List enrollments (filter by courseSlug, studentId, status)
+app.get('/api/enrollments', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.courseSlug) filter.courseSlug = req.query.courseSlug;
+    if (req.query.studentId) filter.studentId = req.query.studentId;
+    if (req.query.status) filter.status = req.query.status;
+
+    const enrollments = await Enrollment.find(filter).sort({ createdAt: -1 });
+    res.json({ success: true, enrollments });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error fetching enrollments: ' + err.message });
+  }
+});
+
+// Single enrollment details with student, course, and module progress
+app.get('/api/enrollments/:id', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const enrollment = await Enrollment.findOne({ id: req.params.id });
+    if (!enrollment) {
+      return res.status(404).json({ success: false, message: 'Enrollment record not found.' });
+    }
+
+    const [student, course, moduleProgress] = await Promise.all([
+      Student.findOne({ studentId: enrollment.studentId }),
+      Course.findOne({ slug: enrollment.courseSlug }),
+      ModuleProgress.find({ enrollmentId: enrollment.id }).sort({ moduleIndex: 1 }),
+    ]);
+
+    res.json({
+      success: true,
+      enrollment,
+      student,
+      course,
+      moduleProgress,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error fetching enrollment details: ' + err.message });
+  }
+});
+
+// Create Enrollment (Single or Bulk Students)
+app.post('/api/enrollments', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const { courseSlug, studentIds, studentId, applicableFee, discount, feeStatus, notes } = req.body;
+
+    if (!courseSlug) {
+      return res.status(400).json({ success: false, message: 'courseSlug is required.' });
+    }
+
+    const course = await Course.findOne({ slug: courseSlug });
+    if (!course) {
+      return res.status(404).json({ success: false, message: `Course "${courseSlug}" not found.` });
+    }
+
+    // Support single studentId or array of studentIds
+    const rawIds = Array.isArray(studentIds) ? studentIds : (studentId ? [studentId] : []);
+    if (rawIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'At least one student must be selected for enrollment.' });
+    }
+
+    const students = await Student.find({
+      $or: [{ studentId: { $in: rawIds } }, { id: { $in: rawIds } }],
+    });
+
+    if (students.length === 0) {
+      return res.status(404).json({ success: false, message: 'No matching student records found for the provided IDs.' });
+    }
+
+    const existingEnrollments = await Enrollment.find({
+      courseSlug,
+      studentId: { $in: students.map((s) => s.studentId) },
+    });
+    const alreadyEnrolledIds = new Set(existingEnrollments.map((e) => e.studentId));
+
+    const createdEnrollments = [];
+    const skippedStudents = [];
+
+    const feeAmount = typeof applicableFee === 'number' ? applicableFee : (course.price || 0);
+    const discountAmount = typeof discount === 'number' ? discount : 0;
+    const finalFee = Math.max(0, feeAmount - discountAmount);
+
+    for (const student of students) {
+      if (alreadyEnrolledIds.has(student.studentId)) {
+        skippedStudents.push({
+          studentId: student.studentId,
+          name: student.name,
+          reason: 'Already enrolled in this course',
+        });
+        continue;
+      }
+
+      const enrollmentId = `ENR-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`;
+      const enrollment = await Enrollment.create({
+        id: enrollmentId,
+        studentId: student.studentId,
+        studentName: student.name,
+        studentPhone: student.phone,
+        studentEmail: student.email,
+        courseSlug: course.slug,
+        courseTitle: course.title,
+        applicableFee: finalFee,
+        discount: discountAmount,
+        feeStatus: feeStatus || 'Paid',
+        notes: notes || '',
+        status: 'Active',
+      });
+
+      // Initialize module progress records for this enrollment
+      await initializeStudentModuleProgress(enrollment, course);
+
+      createdEnrollments.push(enrollment);
+
+      await logAudit(
+        req.user.name,
+        'ENROLL_STUDENT',
+        'Academics',
+        `Enrolled student "${student.name}" (${student.studentId}) in course "${course.title}".`
+      );
+    }
+
+    res.json({
+      success: true,
+      message: `Enrolled ${createdEnrollments.length} student(s). ${skippedStudents.length} student(s) were skipped (already enrolled).`,
+      enrolledCount: createdEnrollments.length,
+      skippedCount: skippedStudents.length,
+      enrollments: createdEnrollments,
+      skipped: skippedStudents,
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: 'Error enrolling students: ' + err.message });
+  }
+});
+
+// Update Enrollment Status (Active, Completed, Withdrawn, Suspended)
+app.put('/api/enrollments/:id/status', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const { status, reason, notes } = req.body;
+    const allowed = ['Active', 'Completed', 'Withdrawn', 'Suspended'];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ success: false, message: `Invalid status. Must be one of: ${allowed.join(', ')}` });
+    }
+
+    const enrollment = await Enrollment.findOne({ id: req.params.id });
+    if (!enrollment) {
+      return res.status(404).json({ success: false, message: 'Enrollment record not found.' });
+    }
+
+    const prevStatus = enrollment.status;
+    enrollment.status = status;
+    if (notes) enrollment.notes = notes;
+
+    if (status === 'Withdrawn') {
+      enrollment.withdrawnAt = new Date();
+      enrollment.withdrawalReason = reason || 'Administrative withdrawal';
+    } else if (status === 'Completed') {
+      enrollment.completedAt = new Date();
+    } else if (status === 'Active') {
+      enrollment.withdrawnAt = undefined;
+      enrollment.withdrawalReason = undefined;
+    }
+
+    await enrollment.save();
+
+    await logAudit(
+      req.user.name,
+      'UPDATE_ENROLLMENT_STATUS',
+      'Academics',
+      `Changed enrollment status for ${enrollment.studentName} in "${enrollment.courseTitle}" from ${prevStatus} to ${status}.`
+    );
+
+    res.json({ success: true, enrollment });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error updating enrollment status: ' + err.message });
+  }
+});
+
+// Delete Enrollment
+app.delete('/api/enrollments/:id', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN'), async (req, res) => {
+  try {
+    const enrollment = await Enrollment.findOne({ id: req.params.id });
+    if (!enrollment) {
+      return res.status(404).json({ success: false, message: 'Enrollment record not found.' });
+    }
+
+    // Clean up dependent records
+    await ModuleProgress.deleteMany({ enrollmentId: enrollment.id });
+    await Attendance.deleteMany({ enrollmentId: enrollment.id });
+    await Enrollment.findOneAndDelete({ id: enrollment.id });
+
+    await logAudit(
+      req.user.name,
+      'DELETE_ENROLLMENT',
+      'Academics',
+      `Deleted enrollment for ${enrollment.studentName} from "${enrollment.courseTitle}".`
+    );
+
+    res.json({ success: true, message: 'Enrollment and associated academic records deleted successfully.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error deleting enrollment: ' + err.message });
+  }
+});
+
+// ----------------------------------------------------
+// SESSIONS & TIMETABLE APIs
+// ----------------------------------------------------
+
+// List sessions for a course
+app.get('/api/courses/:slug/sessions', async (req, res) => {
+  try {
+    const sessions = await Session.find({ courseSlug: req.params.slug }).sort({ date: 1, startTime: 1 });
+    res.json({ success: true, sessions });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error fetching course sessions: ' + err.message });
+  }
+});
+
+// Generate scheduled sessions from course schedule
+app.post('/api/courses/:slug/generate-sessions', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const course = await Course.findOne({ slug: req.params.slug });
+    if (!course) {
+      return res.status(404).json({ success: false, message: `Course "${req.params.slug}" not found.` });
+    }
+
+    const result = await generateCourseSessions(course);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    await logAudit(
+      req.user.name,
+      'GENERATE_SESSIONS',
+      'Academics',
+      `Generated ${result.newCreatedCount} sessions (${result.preservedCount} preserved) for course "${course.title}".`
+    );
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error generating sessions: ' + err.message });
+  }
+});
+
+// Create single ad-hoc session
+app.post('/api/courses/:slug/sessions', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const course = await Course.findOne({ slug: req.params.slug });
+    if (!course) {
+      return res.status(404).json({ success: false, message: `Course "${req.params.slug}" not found.` });
+    }
+
+    const { title, date, startTime, endTime } = req.body;
+    if (!title || !date || !startTime || !endTime) {
+      return res.status(400).json({ success: false, message: 'title, date, startTime, and endTime are required.' });
+    }
+
+    const count = await Session.countDocuments({ courseSlug: course.slug });
+    const session = await Session.create({
+      id: `SES-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
+      courseSlug: course.slug,
+      courseTitle: course.title,
+      sessionNumber: count + 1,
+      title,
+      date,
+      startTime,
+      endTime,
+      status: req.body.status || 'Scheduled',
+      isHoliday: Boolean(req.body.isHoliday),
+    });
+
+    await logAudit(
+      req.user.name,
+      'CREATE_SESSION',
+      'Academics',
+      `Added session #${session.sessionNumber} "${session.title}" (${date}) for course "${course.title}".`
+    );
+
+    res.json({ success: true, session });
+  } catch (err) {
+    res.status(400).json({ success: false, message: 'Error creating session: ' + err.message });
+  }
+});
+
+// Update session
+app.put('/api/sessions/:id', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const allowed = ['title', 'date', 'startTime', 'endTime', 'status', 'isHoliday', 'cancellationReason', 'rescheduledToDate'];
+    const updates = {};
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+
+    const session = await Session.findOneAndUpdate({ id: req.params.id }, { $set: updates }, { new: true });
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Session not found.' });
+    }
+
+    await logAudit(
+      req.user.name,
+      'UPDATE_SESSION',
+      'Academics',
+      `Updated session #${session.sessionNumber} (${session.date}) in course "${session.courseSlug}".`
+    );
+
+    res.json({ success: true, session });
+  } catch (err) {
+    res.status(400).json({ success: false, message: 'Error updating session: ' + err.message });
+  }
+});
+
+// Delete session
+app.delete('/api/sessions/:id', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN'), async (req, res) => {
+  try {
+    const session = await Session.findOne({ id: req.params.id });
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Session not found.' });
+    }
+
+    await Attendance.deleteMany({ sessionId: session.id });
+    await Session.findOneAndDelete({ id: session.id });
+
+    await logAudit(
+      req.user.name,
+      'DELETE_SESSION',
+      'Academics',
+      `Deleted session #${session.sessionNumber} (${session.date}) from "${session.courseSlug}".`
+    );
+
+    res.json({ success: true, message: 'Session deleted successfully.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error deleting session: ' + err.message });
+  }
+});
+
+// ----------------------------------------------------
+// ATTENDANCE APIs
+// ----------------------------------------------------
+
+// Get attendance records for a course (or specific session/enrollment)
+app.get('/api/courses/:slug/attendance', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const filter = { courseSlug: req.params.slug };
+    if (req.query.sessionId) filter.sessionId = req.query.sessionId;
+    if (req.query.enrollmentId) filter.enrollmentId = req.query.enrollmentId;
+    if (req.query.date) filter.sessionDate = req.query.date;
+
+    const records = await Attendance.find(filter).sort({ sessionDate: -1, createdAt: -1 });
+    res.json({ success: true, attendance: records });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error fetching attendance records: ' + err.message });
+  }
+});
+
+// Bulk mark attendance for a session
+app.post('/api/courses/:slug/attendance', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const { sessionId, attendanceList } = req.body;
+    if (!sessionId || !Array.isArray(attendanceList)) {
+      return res.status(400).json({ success: false, message: 'sessionId and attendanceList array are required.' });
+    }
+
+    const session = await Session.findOne({ id: sessionId, courseSlug: req.params.slug });
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Session not found for this course.' });
+    }
+
+    const affectedEnrollmentIds = new Set();
+    const updatedRecords = [];
+
+    for (const item of attendanceList) {
+      const { enrollmentId, status, remarks } = item;
+      if (!enrollmentId || !status) continue;
+
+      const allowedStatuses = ['Present', 'Late', 'Absent', 'Excused', 'Not Marked'];
+      if (!allowedStatuses.includes(status)) continue;
+
+      const enrollment = await Enrollment.findOne({ id: enrollmentId });
+      if (!enrollment) continue;
+
+      affectedEnrollmentIds.add(enrollmentId);
+
+      let record = await Attendance.findOne({ sessionId: session.id, enrollmentId });
+      if (record) {
+        if (record.status !== status) {
+          record.correctionHistory.push({
+            previousStatus: record.status,
+            newStatus: status,
+            changedBy: req.user.name,
+            changedAt: new Date(),
+            reason: remarks || 'Status updated in attendance register',
+          });
+        }
+        record.status = status;
+        record.remarks = remarks || record.remarks;
+        record.markedBy = req.user.name;
+        record.markedAt = new Date();
+        await record.save();
+        updatedRecords.push(record);
+      } else {
+        record = await Attendance.create({
+          id: `ATT-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
+          courseSlug: req.params.slug,
+          sessionId: session.id,
+          enrollmentId,
+          studentId: enrollment.studentId,
+          studentName: enrollment.studentName,
+          sessionDate: session.date,
+          status,
+          markedBy: req.user.name,
+          remarks: remarks || '',
+        });
+        updatedRecords.push(record);
+      }
+    }
+
+    // Finalize session attendance and conduct status
+    session.attendanceFinalized = true;
+    session.attendanceFinalizedAt = new Date();
+    session.attendanceFinalizedBy = req.user.name;
+    if (session.status === 'Scheduled') {
+      session.status = 'Completed';
+    }
+    await session.save();
+
+    // Recalculate attendance % for all affected enrollments using the exact formula
+    for (const eid of affectedEnrollmentIds) {
+      await calculateEnrollmentAttendance(eid);
+    }
+
+    await logAudit(
+      req.user.name,
+      'MARK_ATTENDANCE',
+      'Academics',
+      `Marked attendance for session #${session.sessionNumber} (${session.date}) in course "${req.params.slug}" (${updatedRecords.length} records).`
+    );
+
+    res.json({
+      success: true,
+      message: `Attendance marked for ${updatedRecords.length} student(s).`,
+      session,
+      updatedRecordsCount: updatedRecords.length,
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: 'Error marking attendance: ' + err.message });
+  }
+});
+
+// Course attendance summary with student metrics
+app.get('/api/courses/:slug/attendance/summary', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const course = await Course.findOne({ slug: req.params.slug });
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found.' });
+    }
+
+    const [enrollments, sessions] = await Promise.all([
+      Enrollment.find({ courseSlug: course.slug, status: { $ne: 'Withdrawn' } }),
+      Session.find({ courseSlug: course.slug, isHoliday: { $ne: true } }),
+    ]);
+
+    const scheduledSessions = sessions.filter((s) => s.status !== 'Cancelled');
+    const conductedSessions = scheduledSessions.filter((s) => s.attendanceFinalized || s.status === 'Completed');
+
+    const studentBreakdowns = [];
+    for (const enr of enrollments) {
+      const stats = await calculateEnrollmentAttendance(enr.id);
+      studentBreakdowns.push({
+        enrollmentId: enr.id,
+        studentId: enr.studentId,
+        studentName: enr.studentName,
+        status: enr.status,
+        attendancePercentage: stats.attendancePercentage,
+        sessionsPresent: stats.present,
+        sessionsLate: stats.late,
+        sessionsAbsent: stats.absent,
+        sessionsExcused: stats.excused,
+        eligibleSessions: stats.eligibleScheduledSessions,
+        isAtRisk: stats.attendancePercentage < (course.minAttendancePercentage || 75),
+      });
+    }
+
+    res.json({
+      success: true,
+      courseSlug: course.slug,
+      courseTitle: course.title,
+      minAttendancePercentage: course.minAttendancePercentage || 75,
+      totalScheduledSessions: scheduledSessions.length,
+      conductedSessionsCount: conductedSessions.length,
+      enrollmentsCount: enrollments.length,
+      studentBreakdowns,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error generating attendance summary: ' + err.message });
+  }
+});
+
+// ----------------------------------------------------
+// MODULE PROGRESS & COMPLETION EVALUATION APIs
+// ----------------------------------------------------
+
+// Get module progress for an enrollment
+app.get('/api/enrollments/:id/progress', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const enrollment = await Enrollment.findOne({ id: req.params.id });
+    if (!enrollment) {
+      return res.status(404).json({ success: false, message: 'Enrollment record not found.' });
+    }
+
+    let progressRecords = await ModuleProgress.find({ enrollmentId: enrollment.id }).sort({ moduleIndex: 1 });
+    if (progressRecords.length === 0) {
+      const course = await Course.findOne({ slug: enrollment.courseSlug });
+      if (course) {
+        progressRecords = await initializeStudentModuleProgress(enrollment, course);
+      }
+    }
+
+    res.json({
+      success: true,
+      enrollmentId: enrollment.id,
+      progressRecords,
+      learningProgressPercentage: enrollment.learningProgressPercentage,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error fetching module progress: ' + err.message });
+  }
+});
+
+// Update specific module progress
+app.put('/api/enrollments/:id/progress/:moduleIndex', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const { status, assessmentScore, assessmentPassed, remarks } = req.body;
+    const moduleIndex = parseInt(req.params.moduleIndex, 10);
+
+    const enrollment = await Enrollment.findOne({ id: req.params.id });
+    if (!enrollment) {
+      return res.status(404).json({ success: false, message: 'Enrollment not found.' });
+    }
+
+    let record = await ModuleProgress.findOne({ enrollmentId: enrollment.id, moduleIndex });
+    if (!record) {
+      const course = await Course.findOne({ slug: enrollment.courseSlug });
+      const mod = course?.modules?.[moduleIndex];
+      record = new ModuleProgress({
+        id: `MP-${enrollment.id}-${moduleIndex}`,
+        enrollmentId: enrollment.id,
+        studentId: enrollment.studentId,
+        courseSlug: enrollment.courseSlug,
+        moduleIndex,
+        moduleTitle: mod?.title || `Module ${moduleIndex + 1}`,
+        isRequired: mod?.isRequired !== false,
+      });
+    }
+
+    if (status) {
+      record.status = status;
+      if (status === 'Completed' && !record.completedAt) {
+        record.completedAt = new Date();
+      }
+    }
+
+    if (assessmentScore !== undefined) {
+      record.assessmentScore = assessmentScore;
+      record.attempts = (record.attempts || 0) + 1;
+    }
+    if (assessmentPassed !== undefined) {
+      record.assessmentPassed = assessmentPassed;
+    }
+    if (remarks !== undefined) {
+      record.remarks = remarks;
+    }
+    record.assessedBy = req.user.name;
+
+    await record.save();
+
+    // Recalculate learning progress & evaluate course completion policy
+    const progressStats = await calculateEnrollmentProgress(enrollment.id);
+    const completionEval = await evaluateCourseCompletion(enrollment.id);
+
+    await logAudit(
+      req.user.name,
+      'UPDATE_MODULE_PROGRESS',
+      'Academics',
+      `Updated module #${moduleIndex + 1} (${record.moduleTitle}) for student ${enrollment.studentName} in "${enrollment.courseTitle}". Status: ${record.status}.`
+    );
+
+    res.json({
+      success: true,
+      module: record,
+      learningProgressPercentage: progressStats.learningProgressPercentage,
+      completionEvaluation: completionEval,
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: 'Error updating module progress: ' + err.message });
+  }
+});
+
+// Evaluate completion criteria
+app.post('/api/enrollments/:id/evaluate-completion', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const evaluation = await evaluateCourseCompletion(req.params.id);
+    res.json({ success: true, evaluation });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error evaluating completion: ' + err.message });
+  }
+});
+
+// Complete Course Enrollment
+app.post('/api/enrollments/:id/complete', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN'), async (req, res) => {
+  try {
+    const { force, notes } = req.body;
+    const enrollment = await Enrollment.findOne({ id: req.params.id });
+    if (!enrollment) {
+      return res.status(404).json({ success: false, message: 'Enrollment not found.' });
+    }
+
+    const evaluation = await evaluateCourseCompletion(enrollment.id);
+
+    if (!evaluation.eligible && !force) {
+      return res.status(400).json({
+        success: false,
+        message: 'Student has not met completion criteria (attendance requirement or required syllabus modules). Pass force=true to override.',
+        evaluation,
+      });
+    }
+
+    enrollment.status = 'Completed';
+    enrollment.completedAt = new Date();
+    enrollment.completionEligible = true;
+    if (notes) enrollment.notes = notes;
+    await enrollment.save();
+
+    await logAudit(
+      req.user.name,
+      'COMPLETE_ENROLLMENT',
+      'Academics',
+      `Graduated/completed course for student "${enrollment.studentName}" in "${enrollment.courseTitle}" (Attendance: ${evaluation.actualAttendancePercentage}%, Learning: ${evaluation.learningProgressPercentage}%).`
+    );
+
+    res.json({
+      success: true,
+      message: 'Course enrollment marked as Completed successfully.',
+      enrollment,
+      evaluation,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error completing enrollment: ' + err.message });
+  }
+});
+
+// ----------------------------------------------------
+// ACADEMIC REPORTS APIs
+// ----------------------------------------------------
+app.get('/api/reports/academics', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  try {
+    const [courses, allEnrollments] = await Promise.all([
+      Course.find(),
+      Enrollment.find(),
+    ]);
+
+    const activeEnrollments = allEnrollments.filter((e) => e.status === 'Active');
+    const completedEnrollments = allEnrollments.filter((e) => e.status === 'Completed');
+    const withdrawnEnrollments = allEnrollments.filter((e) => e.status === 'Withdrawn');
+
+    const avgAttendance = activeEnrollments.length > 0
+      ? Math.round(activeEnrollments.reduce((sum, e) => sum + (e.attendancePercentage || 0), 0) / activeEnrollments.length)
+      : 0;
+
+    const avgProgress = activeEnrollments.length > 0
+      ? Math.round(activeEnrollments.reduce((sum, e) => sum + (e.learningProgressPercentage || 0), 0) / activeEnrollments.length)
+      : 0;
+
+    // Identify at-risk students (active with attendance < 75%)
+    const atRiskEnrollments = activeEnrollments.filter((e) => (e.attendancePercentage || 0) < 75);
+
+    // Per-course breakdown
+    const courseBreakdown = courses.map((course) => {
+      const courseEnrs = allEnrollments.filter((e) => e.courseSlug === course.slug);
+      const activeEnrs = courseEnrs.filter((e) => e.status === 'Active');
+      const compEnrs = courseEnrs.filter((e) => e.status === 'Completed');
+      const courseAvgAtt = activeEnrs.length > 0
+        ? Math.round(activeEnrs.reduce((s, e) => s + (e.attendancePercentage || 0), 0) / activeEnrs.length)
+        : 0;
+
+      return {
+        courseSlug: course.slug,
+        title: course.title,
+        status: course.status || 'Active',
+        totalEnrollments: courseEnrs.length,
+        activeEnrollments: activeEnrs.length,
+        completedEnrollments: compEnrs.length,
+        averageAttendance: courseAvgAtt,
+      };
+    });
+
+    res.json({
+      success: true,
+      report: {
+        totalCourses: courses.length,
+        activeCourses: courses.filter((c) => c.status === 'Active' || !c.status).length,
+        totalEnrollments: allEnrollments.length,
+        activeEnrollments: activeEnrollments.length,
+        completedEnrollments: completedEnrollments.length,
+        withdrawnEnrollments: withdrawnEnrollments.length,
+        averageAttendance: avgAttendance,
+        averageProgress: avgProgress,
+        atRiskCount: atRiskEnrollments.length,
+        atRiskStudents: atRiskEnrollments.map((e) => ({
+          enrollmentId: e.id,
+          studentId: e.studentId,
+          studentName: e.studentName,
+          courseSlug: e.courseSlug,
+          courseTitle: e.courseTitle,
+          attendancePercentage: e.attendancePercentage,
+          learningProgressPercentage: e.learningProgressPercentage,
+        })),
+        courseBreakdown,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error compiling academic report: ' + err.message });
   }
 });
 

@@ -29,6 +29,7 @@ export const AdminDashboard: React.FC = () => {
   const [coursesCount, setCoursesCount] = useState(cmsStore.getCourses().length);
   const [batchesCount, setBatchesCount] = useState(cmsStore.getBatches().length);
   const [studentsCount, setStudentsCount] = useState(cmsStore.getStudents().length);
+  const [enrollmentsCount, setEnrollmentsCount] = useState(cmsStore.getEnrollments().length);
   const [certificatesCount, setCertificatesCount] = useState(cmsStore.getCertificates().length);
   const [blogCount, setBlogCount] = useState(cmsStore.getBlogPosts().length);
 
@@ -39,6 +40,7 @@ export const AdminDashboard: React.FC = () => {
       setCoursesCount(cmsStore.getCourses().length);
       setBatchesCount(cmsStore.getBatches().length);
       setStudentsCount(cmsStore.getStudents().length);
+      setEnrollmentsCount(cmsStore.getEnrollments().length);
       setCertificatesCount(cmsStore.getCertificates().length);
       setBlogCount(cmsStore.getBlogPosts().length);
     });
@@ -403,6 +405,49 @@ export const AdminDashboard: React.FC = () => {
           >
             Manage All Lead Follow-ups
           </button>
+        </div>
+      </div>
+
+      {/* Course Academics & Student Enrollments Section */}
+      <div className="bg-white rounded-2xl p-6 border border-teal-100/70 shadow-2xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-bold text-[#123B3A]">Course Academics & Attendance Management</h3>
+            <p className="text-xs text-gray-500">Track student course progress, timetable schedules, and attendance registers</p>
+          </div>
+          <button
+            onClick={() => navigate('/admin/courses')}
+            className="text-xs font-bold text-[#087F78] hover:underline flex items-center gap-1"
+          >
+            <span>View All Courses</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {cmsStore.getCourses().slice(0, 3).map((course) => {
+            const courseEnrollments = cmsStore.getEnrollments(course.slug);
+            return (
+              <div
+                key={course.slug}
+                onClick={() => navigate(`/admin/courses/${course.slug}`)}
+                className="p-4 rounded-xl border border-gray-200/80 hover:border-[#087F78]/50 hover:shadow-xs transition-all cursor-pointer bg-gray-50/50 hover:bg-white"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#087F78] bg-teal-50 px-2 py-0.5 rounded-full">
+                    {course.categoryName}
+                  </span>
+                  <span className="text-[11px] text-gray-500 font-semibold">{courseEnrollments.length} Enrolled</span>
+                </div>
+                <h4 className="text-sm font-bold text-gray-900 truncate">{course.title}</h4>
+                <p className="text-xs text-gray-500 mt-1">{course.duration} • Min Att: {course.minAttendancePercentage || 75}%</p>
+                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-[#087F78]">
+                  <span>Manage Academics & Register</span>
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

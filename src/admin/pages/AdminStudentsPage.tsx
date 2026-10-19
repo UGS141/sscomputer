@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { cmsStore, type Student } from '../cmsStore';
 import { COURSES_DATA } from '../../data/courses';
+import { AttendancePercentage } from '../../components/common/AttendancePercentage';
+import { ModuleProgressIndicator } from '../../components/common/ModuleProgressIndicator';
 
 export const AdminStudentsPage: React.FC = () => {
   const [students, setStudents] = useState<Student[]>(cmsStore.getStudents());
@@ -403,6 +405,45 @@ export const AdminStudentsPage: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Academic Course Enrollments & Progress */}
+              <div className="pt-2 border-t border-gray-100">
+                <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 block mb-2">
+                  Academic Enrollments & Progress
+                </span>
+                {(() => {
+                  const enrollments = cmsStore.getEnrollmentsByStudent(viewModalStudent.studentId || viewModalStudent.id);
+                  if (enrollments.length === 0) {
+                    return (
+                      <div className="text-2xs text-gray-400 italic py-1">
+                        No additional course enrollments recorded yet.
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="space-y-2">
+                      {enrollments.map((enr) => (
+                        <div key={enr.id} className="p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-xs space-y-1.5">
+                          <div className="flex items-center justify-between font-bold text-gray-900">
+                            <span>{enr.courseTitle}</span>
+                            <span className="px-1.5 py-0.2 rounded-full text-2xs font-bold bg-emerald-50 text-emerald-700">
+                              {enr.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-2xs">
+                            <span className="text-gray-500">Attendance:</span>
+                            <AttendancePercentage percentage={enr.attendancePercentage || 0} size="sm" />
+                          </div>
+                          <div className="flex items-center justify-between text-2xs">
+                            <span className="text-gray-500">Syllabus:</span>
+                            <ModuleProgressIndicator progressPercentage={enr.learningProgressPercentage || 0} size="sm" showBar={false} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
             <div className="pt-2 flex gap-2">

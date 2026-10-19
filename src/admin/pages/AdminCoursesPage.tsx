@@ -23,6 +23,7 @@ export const AdminCoursesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedLevel, setSelectedLevel] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
 
   useEffect(() => {
     const unsubscribe = cmsStore.subscribe(() => {
@@ -37,7 +38,8 @@ export const AdminCoursesPage: React.FC = () => {
       c.shortDescription.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCat = selectedCategory === 'all' || c.categoryId === selectedCategory;
     const matchesLevel = selectedLevel === 'all' || c.level === selectedLevel;
-    return matchesSearch && matchesCat && matchesLevel;
+    const matchesStatus = selectedStatus === 'all' || (c.status || 'Active') === selectedStatus;
+    return matchesSearch && matchesCat && matchesLevel && matchesStatus;
   });
 
   const handleDelete = async (slug: string, title: string) => {
@@ -69,8 +71,8 @@ export const AdminCoursesPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-teal-100/70 shadow-2xs">
         <div>
           <span className="text-xs font-bold text-[#087F78] uppercase tracking-wider block">Academics CMS</span>
-          <h1 className="text-2xl font-extrabold text-[#123B3A]">Course Management</h1>
-          <p className="text-xs text-gray-500 mt-1">Manage public course catalog, curriculum modules, and SEO settings</p>
+          <h1 className="text-2xl font-extrabold text-[#123B3A]">Course & Academic Management</h1>
+          <p className="text-xs text-gray-500 mt-1">Manage course catalog, timetable sessions, student enrollments, and attendance registers</p>
         </div>
 
         <button
@@ -95,7 +97,19 @@ export const AdminCoursesPage: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          <select
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-[#123B3A] bg-gray-50 focus:outline-none focus:border-[#087F78]"
+          >
+            <option value="all">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="Draft">Draft</option>
+            <option value="Completed">Completed</option>
+            <option value="Archived">Archived</option>
+          </select>
+
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
@@ -129,8 +143,9 @@ export const AdminCoursesPage: React.FC = () => {
               <tr className="border-b border-gray-100 text-[11px] font-bold text-[#4B6B69] uppercase tracking-wider bg-teal-50/50">
                 <th className="py-3.5 px-4">Course Title</th>
                 <th className="py-3.5 px-4">Category</th>
-                <th className="py-3.5 px-4">Level</th>
+                <th className="py-3.5 px-4">Status</th>
                 <th className="py-3.5 px-4">Duration</th>
+                <th className="py-3.5 px-4">Enrolled</th>
                 <th className="py-3.5 px-4">Modules</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
@@ -138,68 +153,90 @@ export const AdminCoursesPage: React.FC = () => {
             <tbody className="divide-y divide-gray-50 text-xs">
               {filteredCourses.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-gray-400">
+                  <td colSpan={7} className="py-12 text-center text-gray-400">
                     No courses found matching your criteria.
                   </td>
                 </tr>
               ) : (
-                filteredCourses.map((course) => (
-                  <tr key={course.slug} className="hover:bg-teal-50/30 transition-colors group">
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-teal-100 text-[#087F78] font-extrabold flex items-center justify-center shrink-0">
-                          <BookOpen className="w-5 h-5" />
+                filteredCourses.map((course) => {
+                  const enrolledCount = cmsStore.getEnrollments(course.slug).length;
+                  return (
+                    <tr key={course.slug} className="hover:bg-teal-50/30 transition-colors group">
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-teal-100 text-[#087F78] font-extrabold flex items-center justify-center shrink-0">
+                            <BookOpen className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <button
+                              onClick={() => navigate(`/admin/courses/${course.slug}`)}
+                              className="font-bold text-[#123B3A] group-hover:text-[#087F78] transition-colors text-left hover:underline"
+                            >
+                              {course.title}
+                            </button>
+                            <p className="text-[11px] text-gray-400 truncate max-w-xs">{course.shortDescription}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-[#123B3A] group-hover:text-[#087F78] transition-colors">
-                            {course.title}
-                          </p>
-                          <p className="text-[11px] text-gray-400 truncate max-w-xs">{course.shortDescription}</p>
+                      </td>
+                      <td className="py-3.5 px-4 font-semibold text-gray-700">{course.categoryName}</td>
+                      <td className="py-3.5 px-4">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          course.status === 'Completed'
+                            ? 'bg-blue-50 text-blue-700'
+                            : course.status === 'Draft'
+                            ? 'bg-gray-100 text-gray-600'
+                            : 'bg-emerald-50 text-emerald-700'
+                        }`}>
+                          {course.status || 'Active'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-semibold text-gray-600">{course.duration}</td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-bold text-gray-900">{enrolledCount} Students</span>
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-[#123B3A]">{course.modules?.length || 0} Modules</td>
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => navigate(`/admin/courses/${course.slug}`)}
+                            title="Manage Academics, Sessions & Attendance"
+                            className="px-2.5 py-1 rounded-lg bg-[#087F78] text-white hover:bg-[#066560] font-bold text-2xs transition-colors flex items-center gap-1"
+                          >
+                            Academics
+                          </button>
+                          <button
+                            onClick={() => navigate(`/courses/${course.slug}`)}
+                            title="Preview Public Page"
+                            className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => navigate(`/admin/courses/edit/${course.slug}`)}
+                            title="Edit Course & Curriculum"
+                            className="p-1.5 rounded-lg bg-teal-50 text-[#087F78] hover:bg-teal-100"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDuplicate(course)}
+                            title="Duplicate Course"
+                            className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(course.slug, course.title)}
+                            title="Delete Course"
+                            className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-gray-700">{course.categoryName}</td>
-                    <td className="py-3.5 px-4">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-[#087F78]">
-                        {course.level}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-gray-600">{course.duration}</td>
-                    <td className="py-3.5 px-4 font-bold text-[#123B3A]">{course.modules?.length || 0} Modules</td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => navigate(`/courses/${course.slug}`)}
-                          title="Preview Public Page"
-                          className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => navigate(`/admin/courses/edit/${course.slug}`)}
-                          title="Edit Course & Curriculum"
-                          className="p-1.5 rounded-lg bg-teal-50 text-[#087F78] hover:bg-teal-100"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDuplicate(course)}
-                          title="Duplicate Course"
-                          className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(course.slug, course.title)}
-                          title="Delete Course"
-                          className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

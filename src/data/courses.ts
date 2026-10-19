@@ -1,6 +1,21 @@
 export interface CourseModule {
   title: string;
   topics: string[];
+  isRequired?: boolean;
+  order?: number;
+  hasAssessment?: boolean;
+  passingScore?: number;
+}
+
+export interface CourseSchedule {
+  startDate?: string;
+  endDate?: string;
+  weekdays?: string[];
+  dailyStartTime?: string;
+  dailyEndTime?: string;
+  sessionDurationMinutes?: number;
+  holidays?: string[];
+  timezone?: string;
 }
 
 export interface CourseFAQ {
@@ -27,6 +42,10 @@ export interface Course {
   projects: string[];
   faqs: CourseFAQ[];
   isPopular?: boolean;
+  status?: 'Active' | 'Draft' | 'Completed' | 'Archived';
+  price?: number;
+  minAttendancePercentage?: number;
+  schedule?: CourseSchedule;
 }
 
 export const COURSES_DATA: Course[] = [

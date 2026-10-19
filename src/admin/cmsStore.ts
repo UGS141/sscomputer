@@ -1,4 +1,4 @@
-import { COURSES_DATA, type Course } from '../data/courses';
+import { COURSES_DATA, type Course, type CourseSchedule } from '../data/courses';
 import { UPCOMING_BATCHES, type Batch } from '../data/batches';
 import { BLOG_POSTS, type BlogPost } from '../data/blog';
 import { FACULTY_TRAINERS, type Trainer } from '../data/trainers';
@@ -10,7 +10,7 @@ import { FLOATING_SKILLS, type FloatingSkill } from '../components/home/Floating
 import { SITE_CONFIG } from '../config/site';
 import { apiService } from '../services/api';
 
-export type { Course, Batch, BlogPost, Trainer, Testimonial, StudentProject, FAQItem, LearningPath, FloatingSkill };
+export type { Course, CourseSchedule, Batch, BlogPost, Trainer, Testimonial, StudentProject, FAQItem, LearningPath, FloatingSkill };
 
 
 export interface AdminUser {
@@ -95,6 +95,142 @@ export interface CertificateRecord {
   grade: string;
   verificationCode: string;
   status: 'Valid' | 'Revoked';
+}
+
+export interface Enrollment {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentPhone?: string;
+  studentEmail?: string;
+  courseSlug: string;
+  courseTitle: string;
+  enrollmentDate?: string;
+  status: 'Active' | 'Completed' | 'Withdrawn' | 'Suspended';
+  applicableFee?: number;
+  discount?: number;
+  feeStatus: 'Paid' | 'Partial' | 'Pending';
+  attendancePercentage?: number;
+  learningProgressPercentage?: number;
+  completionEligible?: boolean;
+  completedAt?: string;
+  withdrawnAt?: string;
+  withdrawalReason?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CourseSession {
+  id: string;
+  courseSlug: string;
+  courseTitle?: string;
+  sessionNumber: number;
+  title: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:MM
+  endTime: string; // HH:MM
+  status: 'Scheduled' | 'Completed' | 'Cancelled' | 'Rescheduled';
+  isHoliday?: boolean;
+  cancellationReason?: string;
+  rescheduledToDate?: string;
+  attendanceFinalized?: boolean;
+  attendanceFinalizedAt?: string;
+  attendanceFinalizedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AttendanceCorrection {
+  previousStatus?: string;
+  newStatus?: string;
+  changedBy?: string;
+  changedAt?: string;
+  reason?: string;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  courseSlug: string;
+  sessionId: string;
+  enrollmentId: string;
+  studentId: string;
+  studentName: string;
+  sessionDate: string;
+  status: 'Present' | 'Late' | 'Absent' | 'Excused' | 'Not Marked';
+  markedBy?: string;
+  markedAt?: string;
+  remarks?: string;
+  correctionHistory?: AttendanceCorrection[];
+}
+
+export interface ModuleProgress {
+  id: string;
+  enrollmentId: string;
+  studentId: string;
+  courseSlug: string;
+  moduleIndex: number;
+  moduleTitle: string;
+  isRequired: boolean;
+  status: 'Not Started' | 'In Progress' | 'Completed' | 'Needs Revision';
+  completedAt?: string;
+  assessedBy?: string;
+  assessmentScore?: number;
+  assessmentPassed?: boolean;
+  attempts?: number;
+  remarks?: string;
+}
+
+export interface CourseAttendanceSummary {
+  courseSlug: string;
+  courseTitle: string;
+  minAttendancePercentage: number;
+  totalScheduledSessions: number;
+  conductedSessionsCount: number;
+  enrollmentsCount: number;
+  studentBreakdowns: {
+    enrollmentId: string;
+    studentId: string;
+    studentName: string;
+    status: string;
+    attendancePercentage: number;
+    sessionsPresent: number;
+    sessionsLate: number;
+    sessionsAbsent: number;
+    sessionsExcused: number;
+    eligibleSessions: number;
+    isAtRisk: boolean;
+  }[];
+}
+
+export interface AcademicReport {
+  totalCourses: number;
+  activeCourses: number;
+  totalEnrollments: number;
+  activeEnrollments: number;
+  completedEnrollments: number;
+  withdrawnEnrollments: number;
+  averageAttendance: number;
+  averageProgress: number;
+  atRiskCount: number;
+  atRiskStudents: {
+    enrollmentId: string;
+    studentId: string;
+    studentName: string;
+    courseSlug: string;
+    courseTitle: string;
+    attendancePercentage: number;
+    learningProgressPercentage: number;
+  }[];
+  courseBreakdown: {
+    courseSlug: string;
+    title: string;
+    status: string;
+    totalEnrollments: number;
+    activeEnrollments: number;
+    completedEnrollments: number;
+    averageAttendance: number;
+  }[];
 }
 
 export interface AuditLog {
@@ -330,6 +466,7 @@ const defaultInitialState = {
       timestamp: new Date().toISOString()
     }
   ] as AuditLog[],
+  enrollments: [] as Enrollment[],
   currentUser: null as AdminUser | null
 };
 
@@ -345,7 +482,7 @@ class CMSStore {
 
   public async refreshFromBackend() {
     try {
-      const [coursesRes, batchesRes, blogRes, trainersRes, heroRes, settingsRes, annRes, skillsRes, leadsRes, studentsRes] = await Promise.all([
+      const [coursesRes, batchesRes, blogRes, trainersRes, heroRes, settingsRes, annRes, skillsRes, leadsRes, studentsRes, enrollmentsRes] = await Promise.all([
         apiService.getCourses(),
         apiService.getBatches(),
         apiService.getBlogPosts(),
@@ -356,6 +493,7 @@ class CMSStore {
         apiService.getFloatingSkills(),
         apiService.getLeads(),
         apiService.getStudents(),
+        apiService.getEnrollments(),
       ]);
 
       if (coursesRes?.success && Array.isArray(coursesRes.courses)) {
@@ -387,6 +525,9 @@ class CMSStore {
       }
       if (studentsRes?.success && Array.isArray(studentsRes.students)) {
         this.state.students = studentsRes.students;
+      }
+      if (enrollmentsRes?.success && Array.isArray(enrollmentsRes.enrollments)) {
+        this.state.enrollments = enrollmentsRes.enrollments;
       }
       this.saveToStorage();
     } catch (e) {
@@ -931,6 +1072,76 @@ class CMSStore {
     this.logAudit(this.getUserName(), 'DELETE_STUDENT', 'Students', `Deleted student record for "${targetName}" (${targetId}).`);
     this.saveToStorage();
     return true;
+  }
+
+  // Academic Enrollments
+  public getEnrollments(courseSlug?: string) {
+    if (courseSlug) {
+      return this.state.enrollments.filter((e) => e.courseSlug === courseSlug);
+    }
+    return this.state.enrollments;
+  }
+
+  public getEnrollmentsByStudent(studentId: string) {
+    return this.state.enrollments.filter((e) => e.studentId === studentId);
+  }
+
+  public async refreshEnrollments(courseSlug?: string) {
+    const res = await apiService.getEnrollments(courseSlug ? { courseSlug } : undefined);
+    if (res?.success && Array.isArray(res.enrollments)) {
+      if (courseSlug) {
+        this.state.enrollments = [
+          ...this.state.enrollments.filter((e) => e.courseSlug !== courseSlug),
+          ...res.enrollments,
+        ];
+      } else {
+        this.state.enrollments = res.enrollments;
+      }
+      this.saveToStorage();
+    }
+    return this.state.enrollments;
+  }
+
+  public async enrollStudents(payload: {
+    courseSlug: string;
+    studentIds: string[];
+    applicableFee?: number;
+    discount?: number;
+    feeStatus?: string;
+    notes?: string;
+  }) {
+    const res = await apiService.enrollStudents(payload);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to enroll students.');
+    }
+    if (Array.isArray(res.enrollments)) {
+      this.state.enrollments.unshift(...res.enrollments);
+    }
+    this.saveToStorage();
+    return res;
+  }
+
+  public async updateEnrollmentStatus(id: string, status: string, reason?: string, notes?: string) {
+    const res = await apiService.updateEnrollmentStatus(id, status, reason, notes);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to update enrollment status.');
+    }
+    const idx = this.state.enrollments.findIndex((e) => e.id === id);
+    if (idx >= 0 && res.enrollment) {
+      this.state.enrollments[idx] = res.enrollment;
+    }
+    this.saveToStorage();
+    return res.enrollment;
+  }
+
+  public async deleteEnrollment(id: string) {
+    const res = await apiService.deleteEnrollment(id);
+    if (!res?.success) {
+      throw new Error(res?.message || 'Failed to delete enrollment.');
+    }
+    this.state.enrollments = this.state.enrollments.filter((e) => e.id !== id);
+    this.saveToStorage();
+    return res;
   }
 
   // Blog CMS

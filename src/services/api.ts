@@ -222,5 +222,81 @@ export const apiService = {
   issueCertificate: async (certData: any) => {
     return await apiService.request('/api/certificates', 'POST', certData);
   },
+
+  // Enrollments API
+  getEnrollments: async (params?: { courseSlug?: string; studentId?: string; status?: string }) => {
+    const query = new URLSearchParams((params || {}) as Record<string, string>).toString();
+    return await apiService.request(`/api/enrollments${query ? `?${query}` : ''}`);
+  },
+  getEnrollmentById: async (id: string) => {
+    return await apiService.request(`/api/enrollments/${encodeURIComponent(id)}`);
+  },
+  enrollStudents: async (payload: {
+    courseSlug: string;
+    studentIds?: string[];
+    studentId?: string;
+    applicableFee?: number;
+    discount?: number;
+    feeStatus?: string;
+    notes?: string;
+  }) => {
+    return await apiService.request('/api/enrollments', 'POST', payload);
+  },
+  updateEnrollmentStatus: async (id: string, status: string, reason?: string, notes?: string) => {
+    return await apiService.request(`/api/enrollments/${encodeURIComponent(id)}/status`, 'PUT', { status, reason, notes });
+  },
+  deleteEnrollment: async (id: string) => {
+    return await apiService.request(`/api/enrollments/${encodeURIComponent(id)}`, 'DELETE');
+  },
+
+  // Sessions & Timetable API
+  getCourseSessions: async (courseSlug: string) => {
+    return await apiService.request(`/api/courses/${encodeURIComponent(courseSlug)}/sessions`);
+  },
+  generateSessions: async (courseSlug: string) => {
+    return await apiService.request(`/api/courses/${encodeURIComponent(courseSlug)}/generate-sessions`, 'POST');
+  },
+  createSession: async (courseSlug: string, sessionData: any) => {
+    return await apiService.request(`/api/courses/${encodeURIComponent(courseSlug)}/sessions`, 'POST', sessionData);
+  },
+  updateSession: async (sessionId: string, sessionData: any) => {
+    return await apiService.request(`/api/sessions/${encodeURIComponent(sessionId)}`, 'PUT', sessionData);
+  },
+  deleteSession: async (sessionId: string) => {
+    return await apiService.request(`/api/sessions/${encodeURIComponent(sessionId)}`, 'DELETE');
+  },
+
+  // Attendance API
+  getCourseAttendance: async (courseSlug: string, params?: { sessionId?: string; date?: string; enrollmentId?: string }) => {
+    const query = new URLSearchParams((params || {}) as Record<string, string>).toString();
+    return await apiService.request(`/api/courses/${encodeURIComponent(courseSlug)}/attendance${query ? `?${query}` : ''}`);
+  },
+  markAttendance: async (courseSlug: string, payload: { sessionId: string; attendanceList: { enrollmentId: string; status: string; remarks?: string }[] }) => {
+    return await apiService.request(`/api/courses/${encodeURIComponent(courseSlug)}/attendance`, 'POST', payload);
+  },
+  getAttendanceSummary: async (courseSlug: string) => {
+    return await apiService.request(`/api/courses/${encodeURIComponent(courseSlug)}/attendance/summary`);
+  },
+
+  // Module Progress API
+  getEnrollmentProgress: async (enrollmentId: string) => {
+    return await apiService.request(`/api/enrollments/${encodeURIComponent(enrollmentId)}/progress`);
+  },
+  updateModuleProgress: async (enrollmentId: string, moduleIndex: number, progressData: any) => {
+    return await apiService.request(`/api/enrollments/${encodeURIComponent(enrollmentId)}/progress/${moduleIndex}`, 'PUT', progressData);
+  },
+
+  // Course Completion API
+  evaluateCompletion: async (enrollmentId: string) => {
+    return await apiService.request(`/api/enrollments/${encodeURIComponent(enrollmentId)}/evaluate-completion`, 'POST');
+  },
+  completeEnrollment: async (enrollmentId: string, force: boolean = false, notes?: string) => {
+    return await apiService.request(`/api/enrollments/${encodeURIComponent(enrollmentId)}/complete`, 'POST', { force, notes });
+  },
+
+  // Academic Reports API
+  getAcademicReport: async () => {
+    return await apiService.request('/api/reports/academics');
+  },
 };
 
