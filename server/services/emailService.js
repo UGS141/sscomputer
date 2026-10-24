@@ -427,10 +427,26 @@ ${crmLeadUrl}
       </td>
     </tr>
 
-    <!-- Footer -->
+    <!-- Footer & Developer Branding -->
     <tr>
-      <td style="background-color: #f9fbfb; padding: 16px 24px; text-align: center; font-size: 11px; color: #888; border-top: 1px solid #eef2f1;">
-        Sri Shanmukha Computer Institute (SSCI) &bull; Automated CRM Notification System
+      <td style="background-color: #0c2726; padding: 22px 24px; text-align: center; border-top: 2px solid #087F78;">
+        <p style="margin: 0 0 10px 0; font-size: 12px; color: #b2dfdb; font-weight: 600;">
+          Sri Shanmukha Computer Institute (SSCI) &bull; Automated CRM Notification System
+        </p>
+        <p style="margin: 0 0 12px 0; font-size: 11px; color: #80cbc4;">
+          Dhanalakshmipuram, Opposite More Super Market, Nellore, Andhra Pradesh – 524002, India &bull; +91 7675927519
+        </p>
+        <div style="border-top: 1px solid rgba(255,255,255,0.12); padding-top: 14px; margin-top: 12px;">
+          <a href="https://www.ugsitsolutions.com/" target="_blank" style="text-decoration: none; display: inline-block;">
+            <img src="${config.frontendUrl}/ugs-logo.png" alt="UGS IT Solutions Logo" style="height: 28px; width: auto; max-width: 140px; display: inline-block; vertical-align: middle;" />
+          </a>
+          <p style="margin: 8px 0 0 0; font-size: 11px; color: #cbd5e1;">
+            Developed by <a href="https://www.ugsitsolutions.com/" target="_blank" style="color: #2DD4BF; text-decoration: none; font-weight: 700;">UGS IT Solutions</a> &amp; Maintained by <a href="https://www.ugsitsolutions.com/" target="_blank" style="color: #2DD4BF; text-decoration: none; font-weight: 700;">UGS IT Solutions</a>
+          </p>
+          <p style="margin: 4px 0 0 0; font-size: 11px;">
+            <a href="https://www.ugsitsolutions.com/" target="_blank" style="color: #F5B72C; text-decoration: none; font-weight: 600;">https://www.ugsitsolutions.com/</a>
+          </p>
+        </div>
       </td>
     </tr>
   </table>
@@ -446,6 +462,7 @@ ${crmLeadUrl}
  * CRITICAL: Brief, friendly, professional. Strictly NO sensitive internal notes, no CRM links.
  */
 export const renderLeadConfirmationContent = (lead) => {
+  const config = getEmailConfig();
   const subject = `🎉 Congratulations! Enquiry Received - Sri Shanmukha Computer Institute`;
 
   const text = `
@@ -457,16 +474,21 @@ We have successfully received your enquiry for ${lead.courseInterested || 'our p
 
 Our academic counselor will get in touch with you shortly at ${lead.phone} to discuss curriculum details, batch timings, certification pathways, and answer any questions you may have.
 
-INSTITUTE CONTACT INFORMATION:
-- Phone: +91 94948 24343 / +91 94411 25424
-- WhatsApp: +91 94948 24343
-- Email: admissions@sscomputerinstitute.com
-- Address: Upstairs Sri Chaitanya Techno School, Ramamurthy Nagar, Main Road, Nellore, AP - 524001
+=========================================================
+CONTACT SSCI:
+- Campus Address: Dhanalakshmipuram, Opposite More Super Market, Nellore, Andhra Pradesh – 524002, India
+- Phone / WhatsApp: +91 7675927519
+- Email: sscomputerinstitutenlr@gmail.com
+- Working Hours: Monday – Saturday: 8:00 AM – 8:00 PM | Sunday: 9:00 AM – 1:00 PM
 - Website: https://sscomputerinstitute.com
 
 Warm regards,
 Admissions Team
 Sri Shanmukha Computer Institute (SSCI)
+
+=========================================================
+Developed by UGS IT Solutions & Maintained by UGS IT Solutions
+Website: https://www.ugsitsolutions.com/
 `.trim();
 
   const html = `
@@ -477,7 +499,7 @@ Sri Shanmukha Computer Institute (SSCI)
   <title>Congratulations! Enquiry Received</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f7faf9; margin: 0; padding: 20px; color: #123B3A;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.05); border: 1px solid #e2ece9;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.06); border: 1px solid #e2ece9;">
     <!-- Header -->
     <tr>
       <td style="background: linear-gradient(135deg, #123B3A 0%, #087F78 100%); padding: 32px 24px; text-align: center; color: #ffffff;">
@@ -507,39 +529,67 @@ Sri Shanmukha Computer Institute (SSCI)
         </div>
 
         <p style="font-size: 13px; line-height: 1.6; color: #4B6B69;">
-          If you have immediate questions, feel free to call our admissions desk or visit our institute campus in Nellore.
+          If you have immediate questions, feel free to contact us or visit our institute campus in Nellore.
         </p>
 
-        <!-- Contact Cards -->
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 24px; border-top: 1px solid #eef2f1; padding-top: 20px; font-size: 12px; color: #4B6B69;">
+        <!-- Contact SSCI Card (Exact Verified Details) -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 24px; font-size: 13px; color: #123B3A; background-color: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
           <tr>
-            <td style="padding-bottom: 8px;">
-              <strong>Call / WhatsApp:</strong> <a href="tel:+919494824343" style="color: #087F78; text-decoration: none; font-weight: 700;">+91 94948 24343</a> / <a href="tel:+919441125424" style="color: #087F78; text-decoration: none; font-weight: 700;">+91 94411 25424</a>
+            <td colspan="2" style="background-color: #e6f4f2; padding: 10px 16px; font-size: 13px; font-weight: 800; color: #087F78; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #d0ebe7;">
+              Contact SSCI
             </td>
           </tr>
           <tr>
-            <td style="padding-bottom: 8px;">
-              <strong>Email:</strong> <a href="mailto:admissions@sscomputerinstitute.com" style="color: #087F78; text-decoration: none;">admissions@sscomputerinstitute.com</a>
+            <td width="32%" style="padding: 12px 16px 6px 16px; font-weight: 700; color: #4B6B69; vertical-align: top;">Campus Address:</td>
+            <td style="padding: 12px 16px 6px 0; color: #123B3A; line-height: 1.4;">
+              Dhanalakshmipuram, Opposite More Super Market, Nellore, Andhra Pradesh – 524002, India
             </td>
           </tr>
           <tr>
-            <td style="padding-bottom: 8px;">
-              <strong>Campus Address:</strong> Upstairs Sri Chaitanya Techno School, Ramamurthy Nagar, Main Road, Nellore, AP - 524001
+            <td style="padding: 6px 16px; font-weight: 700; color: #4B6B69;">Call / WhatsApp:</td>
+            <td style="padding: 6px 16px 6px 0;">
+              <a href="tel:+917675927519" style="color: #087F78; text-decoration: none; font-weight: 700;">+91 7675927519</a>
             </td>
           </tr>
           <tr>
-            <td>
-              <strong>Website:</strong> <a href="https://sscomputerinstitute.com" style="color: #087F78; text-decoration: none;">sscomputerinstitute.com</a>
+            <td style="padding: 6px 16px; font-weight: 700; color: #4B6B69;">Email Address:</td>
+            <td style="padding: 6px 16px 6px 0;">
+              <a href="mailto:sscomputerinstitutenlr@gmail.com" style="color: #087F78; text-decoration: none; font-weight: 600;">sscomputerinstitutenlr@gmail.com</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 16px; font-weight: 700; color: #4B6B69;">Working Hours:</td>
+            <td style="padding: 6px 16px 6px 0; color: #123B3A;">
+              Monday – Saturday: 8:00 AM – 8:00 PM | Sunday: 9:00 AM – 1:00 PM
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 16px 12px 16px; font-weight: 700; color: #4B6B69;">Official Website:</td>
+            <td style="padding: 6px 16px 12px 0;">
+              <a href="https://sscomputerinstitute.com" style="color: #087F78; text-decoration: none; font-weight: 700;">sscomputerinstitute.com</a>
             </td>
           </tr>
         </table>
       </td>
     </tr>
 
-    <!-- Footer -->
+    <!-- Footer & UGS IT Solutions Branding -->
     <tr>
-      <td style="background-color: #f9fbfb; padding: 16px 24px; text-align: center; font-size: 11px; color: #888; border-top: 1px solid #eef2f1;">
-        Sri Shanmukha Computer Institute &bull; Empowering Careers Since 2008
+      <td style="background-color: #0c2726; padding: 22px 24px; text-align: center; border-top: 2px solid #087F78;">
+        <p style="margin: 0 0 10px 0; font-size: 12px; color: #b2dfdb; font-weight: 600;">
+          Sri Shanmukha Computer Institute &bull; Empowering Careers Since 2008
+        </p>
+        <div style="border-top: 1px solid rgba(255,255,255,0.12); padding-top: 14px; margin-top: 12px;">
+          <a href="https://www.ugsitsolutions.com/" target="_blank" style="text-decoration: none; display: inline-block;">
+            <img src="${config.frontendUrl}/ugs-logo.png" alt="UGS IT Solutions Logo" style="height: 30px; width: auto; max-width: 140px; display: inline-block; vertical-align: middle;" />
+          </a>
+          <p style="margin: 8px 0 0 0; font-size: 11px; color: #cbd5e1;">
+            Developed by <a href="https://www.ugsitsolutions.com/" target="_blank" style="color: #2DD4BF; text-decoration: none; font-weight: 700;">UGS IT Solutions</a> &amp; Maintained by <a href="https://www.ugsitsolutions.com/" target="_blank" style="color: #2DD4BF; text-decoration: none; font-weight: 700;">UGS IT Solutions</a>
+          </p>
+          <p style="margin: 4px 0 0 0; font-size: 11px;">
+            <a href="https://www.ugsitsolutions.com/" target="_blank" style="color: #F5B72C; text-decoration: none; font-weight: 600;">https://www.ugsitsolutions.com/</a>
+          </p>
+        </div>
       </td>
     </tr>
   </table>
