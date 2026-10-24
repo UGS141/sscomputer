@@ -19,13 +19,13 @@ services:
       - key: CONSULTANCY_TEAM_EMAIL
         value: sscomputerinstitutenlr@gmail.com, ugssolutions1@gmail.com
       - key: EMAIL_FROM
-        value: '"Sri Shanmukha Computer Institute" <sscomputerinstitutenlr@gmail.com>'
+        value: '"Sri Shanmukha Computer Institute" <ugssolutions1@gmail.com>'
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
-        value: "587"
+        value: "465"
       - key: SMTP_SECURE
-        value: "false"
+        value: "true"
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS

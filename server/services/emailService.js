@@ -73,7 +73,7 @@ export const getEmailProviderStatus = () => {
 
   return {
     isConfigured: hasSmtp || hasResend,
-    activeProvider: hasResend ? 'resend' : hasSmtp ? 'smtp' : null,
+    activeProvider: hasSmtp ? 'smtp' : hasResend ? 'resend' : null,
     missingVariables,
     teamEmail: config.teamEmail,
     fromEmail: config.fromEmail,
