@@ -165,13 +165,14 @@ export const sendRawEmail = async ({ to, subject, html, text, forceProvider = nu
   if (provider === 'webhook' && config.gmailWebhookUrl) {
     const response = await fetch(config.gmailWebhookUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         to: recipientStr,
         subject,
         html,
         text,
       }),
+      redirect: 'follow',
     });
 
     const data = await response.json().catch(() => ({}));
